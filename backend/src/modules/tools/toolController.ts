@@ -2,18 +2,18 @@ import { Request, Response, Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../../lib/prisma';
 import { requireAuth, optionalAuth } from '../../middleware/auth';
-import { encryptSecret } from '../../lib/crypto';
+import { encryptSecret, hashAgentToken } from '../../lib/crypto';
+import { verifyJwtToken } from '../../lib/auth';
 import { executeUpstreamTool } from '../execution/executor';
 import { ExecutionGateway } from '../execution/executionGateway';
 import { sendSuccess, sendError } from '../../utils/response';
-import { NotFoundError, ForbiddenError, BadRequestError } from '../../utils/errors';
-import { hashAgentToken } from '../../lib/crypto';
+import { NotFoundError, ForbiddenError, BadRequestError, UnauthorizedError } from '../../utils/errors';
 
 export const toolRouter = Router();
 
 const createToolSchema = z.object({
-  name: z.string().min(2, 'Name is required'),
-  shortDescription: z.string().min(5, 'Short description is required'),
+  name: z.string().min(2, 'Name is required').max(100),
+  shortDescription: z.string().min(5, 'Short description is required').max(200),
   detailedDescription: z.string().min(10, 'Detailed description is required'),
   category: z.string().min(2, 'Category is required'),
   tags: z.array(z.string()).default([]),
@@ -25,7 +25,18 @@ const createToolSchema = z.object({
   authMethod: z.enum(['NONE', 'API_KEY_HEADER', 'BEARER_TOKEN']).default('NONE'),
   authHeaderName: z.string().optional(),
   upstreamSecret: z.string().optional(),
-  priceMicroUsd: z.string().or(z.number()).transform((v) => BigInt(v)).default(1000), // $0.001
+  priceMicroUsd: z
+    .union([z.string(), z.number(), z.bigint()])
+    .refine((v) => {
+      try {
+        const b = BigInt(v);
+        return b >= 0n;
+      } catch {
+        return false;
+      }
+    }, { message: 'priceMicroUsd must be a non-negative integer' })
+    .transform((v) => BigInt(v))
+    .default(1000n), // $0.001
   timeoutMs: z.number().int().min(500).max(30000).default(15000),
   rateLimitPerMinute: z.number().int().min(1).default(60),
   terms: z.string().optional(),
@@ -211,6 +222,12 @@ toolRouter.get('/:id', optionalAuth, async (req: Request, res: Response, next) =
       throw new NotFoundError('Tool not found');
     }
 
+    const isOwner = req.user && req.user.userId === tool.creatorId;
+    const isAdmin = req.user && req.user.isAdmin;
+    if (tool.status !== 'APPROVED' && !tool.isDemo && !isOwner && !isAdmin) {
+      throw new NotFoundError('Tool not found');
+    }
+
     const metrics = await getToolMetrics(tool.id);
 
     // Invariant 8: NEVER return encryptedSecret or raw credentials
@@ -360,7 +377,7 @@ toolRouter.post('/:id/submit', requireAuth, async (req: Request, res: Response, 
       throw new NotFoundError('Tool not found');
     }
 
-    // Must have at least one successful test run before submission
+    // Must have at least one successful test run before submission (or be demo)
     const successfulTest = await prisma.toolTestRun.findFirst({
       where: { toolId: tool.id, isSuccess: true },
     });
@@ -384,6 +401,223 @@ toolRouter.post('/:id/submit', requireAuth, async (req: Request, res: Response, 
     next(error);
   }
 });
+
+toolRouter.put('/:id', requireAuth, async (req: Request, res: Response, next) => {
+  try {
+    const tool = await prisma.tool.findFirst({
+      where: { id: req.params.id, creatorId: req.user!.userId },
+    });
+
+    if (!tool) {
+      throw new NotFoundError('Tool not found or unauthorized');
+    }
+
+    const {
+      name,
+      shortDescription,
+      detailedDescription,
+      category,
+      tags,
+      baseUrl,
+      endpointPath,
+      httpMethod,
+      inputSchema,
+      outputSchema,
+      authMethod,
+      authHeaderName,
+      upstreamSecret,
+      priceMicroUsd,
+      timeoutMs,
+      rateLimitPerMinute,
+      terms,
+      supportContact,
+    } = req.body;
+
+    let encryptedSecret = tool.encryptedSecret;
+    let secretKeyVersion = tool.secretKeyVersion;
+
+    if (upstreamSecret) {
+      const encrypted = encryptSecret(upstreamSecret);
+      encryptedSecret = encrypted.encrypted;
+      secretKeyVersion = encrypted.keyVersion;
+    }
+
+    let newPrice = tool.priceMicroUsd;
+    if (priceMicroUsd !== undefined) {
+      try {
+        const parsedPrice = BigInt(priceMicroUsd);
+        if (parsedPrice < 0n) {
+          throw new BadRequestError('priceMicroUsd must be a non-negative integer');
+        }
+        newPrice = parsedPrice;
+      } catch (err) {
+        if (err instanceof BadRequestError) throw err;
+        throw new BadRequestError('Invalid priceMicroUsd');
+      }
+    }
+
+    const isPriceChanged = newPrice !== tool.priceMicroUsd;
+    const isSchemaChanged = inputSchema !== undefined || outputSchema !== undefined;
+    const isEndpointChanged = (baseUrl && baseUrl !== tool.baseUrl) || (endpointPath && endpointPath !== tool.endpointPath);
+    const newVersion = (isPriceChanged || isSchemaChanged || isEndpointChanged) ? tool.version + 1 : tool.version;
+
+    // PRD 7.2: If creator modifies endpoint or schema of an APPROVED tool (and not demo),
+    // status transitions back to PENDING_REVIEW to require verification
+    let nextStatus = tool.status;
+    if ((isEndpointChanged || isSchemaChanged) && tool.status === 'APPROVED' && !tool.isDemo) {
+      nextStatus = 'PENDING_REVIEW';
+    }
+
+    const updated = await prisma.tool.update({
+      where: { id: tool.id },
+      data: {
+        ...(name ? { name } : {}),
+        ...(shortDescription ? { shortDescription } : {}),
+        ...(detailedDescription ? { detailedDescription } : {}),
+        ...(category ? { category } : {}),
+        ...(tags ? { tags } : {}),
+        ...(baseUrl ? { baseUrl } : {}),
+        ...(endpointPath ? { endpointPath } : {}),
+        ...(httpMethod ? { httpMethod } : {}),
+        ...(inputSchema ? { inputSchema: inputSchema as object } : {}),
+        ...(outputSchema ? { outputSchema: outputSchema as object } : {}),
+        ...(authMethod ? { authMethod } : {}),
+        ...(authHeaderName !== undefined ? { authHeaderName } : {}),
+        encryptedSecret,
+        secretKeyVersion,
+        priceMicroUsd: newPrice,
+        ...(timeoutMs ? { timeoutMs: Number(timeoutMs) } : {}),
+        ...(rateLimitPerMinute ? { rateLimitPerMinute: Number(rateLimitPerMinute) } : {}),
+        ...(terms !== undefined ? { terms } : {}),
+        ...(supportContact !== undefined ? { supportContact } : {}),
+        version: newVersion,
+        status: nextStatus,
+      },
+    });
+
+    // PRD 7.2: If schema, price or endpoint changed, create new ToolVersion record
+    if (isPriceChanged || isSchemaChanged || isEndpointChanged) {
+      await prisma.toolVersion.create({
+        data: {
+          toolId: tool.id,
+          version: newVersion,
+          inputSchema: (inputSchema || tool.inputSchema) as object,
+          outputSchema: (outputSchema || tool.outputSchema) as object | undefined,
+          priceMicroUsd: newPrice,
+          endpointPath: endpointPath || tool.endpointPath,
+          httpMethod: httpMethod || tool.httpMethod,
+          authMethod: authMethod || tool.authMethod,
+        },
+      });
+    }
+
+    const { encryptedSecret: _, secretKeyVersion: __, ...safeTool } = updated;
+    return sendSuccess(res, { ...safeTool, priceMicroUsd: safeTool.priceMicroUsd.toString() });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/tools/:id/status (Creator pause or retire tool)
+toolRouter.post('/:id/status', requireAuth, async (req: Request, res: Response, next) => {
+  try {
+    const { status } = req.body;
+    if (!['PAUSED', 'APPROVED', 'RETIRED'].includes(status)) {
+      throw new BadRequestError('Invalid status transition');
+    }
+
+    const tool = await prisma.tool.findFirst({
+      where: { id: req.params.id, creatorId: req.user!.userId },
+    });
+
+    if (!tool) {
+      throw new NotFoundError('Tool not found');
+    }
+
+    if (tool.status === 'RETIRED') {
+      throw new BadRequestError('Cannot change status of a retired tool');
+    }
+
+    if (tool.status === 'SUSPENDED') {
+      throw new BadRequestError('Suspended tools can only be modified by an administrator');
+    }
+
+    // Creators can only resume to APPROVED if the tool was previously APPROVED (currently PAUSED)
+    if (status === 'APPROVED' && tool.status !== 'PAUSED') {
+      throw new BadRequestError('Only paused tools can be resumed to APPROVED status by creator. New or unapproved tools require admin approval.');
+    }
+
+    const updated = await prisma.tool.update({
+      where: { id: tool.id },
+      data: { status },
+    });
+
+    return sendSuccess(res, { id: updated.id, status: updated.status });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE /api/tools/:id (Delete tool with no execution history)
+toolRouter.delete('/:id', requireAuth, async (req: Request, res: Response, next) => {
+  try {
+    const tool = await prisma.tool.findFirst({
+      where: { id: req.params.id, creatorId: req.user!.userId },
+    });
+
+    if (!tool) {
+      throw new NotFoundError('Tool not found');
+    }
+
+    const callCount = await prisma.toolCall.count({ where: { toolId: tool.id } });
+    if (callCount > 0) {
+      throw new BadRequestError('Cannot delete a tool that has call history. Retire the tool instead.');
+    }
+
+    await prisma.adminReview.deleteMany({ where: { toolId: tool.id } });
+    await prisma.toolTestRun.deleteMany({ where: { toolId: tool.id } });
+    await prisma.toolVersion.deleteMany({ where: { toolId: tool.id } });
+    await prisma.abuseReport.deleteMany({ where: { toolId: tool.id } });
+    await prisma.tool.delete({ where: { id: tool.id } });
+
+    return sendSuccess(res, { id: tool.id, message: 'Tool deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/tools/:id/report (Report tool abuse)
+toolRouter.post('/:id/report', optionalAuth, async (req: Request, res: Response, next) => {
+  try {
+    const { reason, callId } = req.body;
+    if (!reason) {
+      throw new BadRequestError('Abuse report reason is required');
+    }
+
+    const tool = await prisma.tool.findUnique({
+      where: { id: req.params.id },
+    });
+
+    if (!tool) {
+      throw new NotFoundError('Tool not found');
+    }
+
+    const report = await prisma.abuseReport.create({
+      data: {
+        toolId: tool.id,
+        reporterId: req.user?.userId || null,
+        callId: callId || null,
+        reason,
+        status: 'PENDING',
+      },
+    });
+
+    return sendSuccess(res, { reportId: report.id, message: 'Abuse report filed successfully' }, 201);
+  } catch (error) {
+    next(error);
+  }
+});
+
 
 // POST /api/tools/:id/calls (Execute paid tool call)
 toolRouter.post('/:id/calls', async (req: Request, res: Response, next) => {
@@ -409,21 +643,35 @@ toolRouter.post('/:id/calls', async (req: Request, res: Response, next) => {
       // Otherwise check user session (Playground call)
       const userToken = req.cookies?.token || (authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null);
       if (!userToken) {
-        throw new ForbiddenError('Authentication required to execute tool');
+        throw new UnauthorizedError('Authentication required to execute tool');
       }
 
-      // Find or create default playground agent for this user
-      const user = await prisma.user.findFirst({
-        where: { agents: { some: {} } },
-        include: { agents: true },
+      let payload: ReturnType<typeof verifyJwtToken>;
+      try {
+        payload = verifyJwtToken(userToken);
+      } catch {
+        throw new UnauthorizedError('Invalid or expired authentication token');
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { id: payload.userId },
+        include: { agents: { where: { isActive: true } } },
       });
 
+      if (!user) {
+        throw new UnauthorizedError('User not found');
+      }
+
       if (req.body.agentId) {
-        agentId = req.body.agentId;
-      } else if (user?.agents && user.agents.length > 0) {
+        const ownedAgent = user.agents.find((a) => a.id === req.body.agentId);
+        if (!ownedAgent) {
+          throw new ForbiddenError('Specified agent does not belong to the authenticated user or is inactive');
+        }
+        agentId = ownedAgent.id;
+      } else if (user.agents && user.agents.length > 0) {
         agentId = user.agents[0].id;
       } else {
-        throw new BadRequestError('No agent found. Create an agent before executing paid calls.');
+        throw new BadRequestError('No active agent found for this user. Create an agent before executing paid calls.');
       }
     }
 

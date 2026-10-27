@@ -147,7 +147,10 @@ export class ExecutionGateway {
     }
 
     const priceMicroUsd = tool.priceMicroUsd;
-    const platformFeeBps = env.PLATFORM_FEE_BPS;
+    const feeSetting = await prisma.platformSetting.findUnique({
+      where: { key: 'PLATFORM_FEE_BPS' },
+    });
+    const platformFeeBps = feeSetting ? parseInt(feeSetting.value, 10) : env.PLATFORM_FEE_BPS;
     const platformFeeMicroUsd = (priceMicroUsd * BigInt(platformFeeBps)) / 10000n;
     const creatorEarningsMicroUsd = priceMicroUsd - platformFeeMicroUsd;
 

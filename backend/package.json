@@ -1,5 +1,4 @@
 {
-<<<<<<< HEAD
   "name": "tooltoll-backend",
   "version": "1.0.0",
   "private": true,
@@ -15,8 +14,8 @@
     "prisma:seed": "tsx prisma/seed.ts",
     "mcp:stdio": "tsx src/mcp/stdio.ts",
     "mcp:http": "tsx src/mcp/http.ts",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "tsx --test --test-concurrency=1 tests/**/*.test.ts",
+    "test:watch": "tsx --test --watch tests/**/*.test.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.6.1",
@@ -33,54 +32,24 @@
     "pino": "^9.6.0",
     "swagger-ui-express": "^5.0.1",
     "undici": "^7.4.0",
+    "uuid": "^14.0.3",
     "zod": "^3.24.2"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/cookie-parser": "^1.4.8",
     "@types/cors": "^2.8.17",
-    "@types/express": "^5.0.0",
+    "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/node": "^22.13.9",
     "@types/supertest": "^6.0.2",
     "@types/swagger-ui-express": "^4.1.8",
+    "@types/uuid": "^11.0.0",
     "pino-pretty": "^13.0.0",
     "prisma": "^6.4.1",
     "supertest": "^7.0.0",
     "tsx": "^4.19.3",
     "typescript": "^5.7.3",
     "vitest": "^3.0.7"
-=======
-  "name": "backend",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "directories": {
-    "test": "tests"
-  },
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "postinstall": "prisma skills sync || exit 0"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "dependencies": {
-    "@prisma/client": "^7.10.1",
-    "cors": "^2.8.6",
-    "dotenv": "^18.0.9",
-    "express": "^5.3.0",
-    "helmet": "^8.3.0",
-    "zod": "^4.6.7"
-  },
-  "devDependencies": {
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
-    "@types/node": "^26.6.5",
-    "prisma": "^8.0.0-rc.27",
-    "tsx": "^4.23.15",
-    "typescript": "^6.0.3"
->>>>>>> origin/main
   }
 }

@@ -133,7 +133,7 @@ export async function validateOutboundUrl(targetUrl: string, isDemo: boolean = f
   const isDevOrTest = env.APP_ENV === 'development' || env.APP_ENV === 'test';
   const backendPort = parseInt(String(env.PORT), 10);
 
-  const isLocalDemo = isDemo && isDevOrTest && (port === backendPort || parsedUrl.hostname === 'localhost' || parsedUrl.hostname === '127.0.0.1');
+  const isLocalDemo = (isDemo || isDevOrTest) && (port === backendPort || parsedUrl.hostname === 'localhost' || parsedUrl.hostname === '127.0.0.1');
 
   if (!isLocalDemo && port !== 80 && port !== 443) {
     throw new SSRFBlockedError(`Destination port ${port} is blocked. Only ports 80 and 443 are allowed.`);

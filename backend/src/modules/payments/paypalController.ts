@@ -11,7 +11,10 @@ import { env } from '../../config/env';
 export const paypalRouter = Router();
 
 const createOrderSchema = z.object({
-  amountUsd: z.string().or(z.number()),
+  amountUsd: z.string().or(z.number()).refine((val) => {
+    const n = typeof val === 'number' ? val : parseFloat(String(val).trim());
+    return !isNaN(n) && isFinite(n) && n >= 1.0 && n <= 10000.0;
+  }, { message: 'amountUsd must be a valid positive amount between $1.00 and $10,000.00' }),
 });
 
 // POST /api/paypal/orders
@@ -19,7 +22,7 @@ paypalRouter.post('/orders', requireAuth, async (req: Request, res: Response, ne
   try {
     const parsed = createOrderSchema.safeParse(req.body);
     if (!parsed.success) {
-      return sendError(res, 'amountUsd is required', 400, 'VALIDATION_ERROR');
+      return sendError(res, parsed.error.errors[0]?.message || 'Invalid amountUsd', 400, 'VALIDATION_ERROR', parsed.error.format());
     }
 
     const userId = req.user!.userId;
@@ -32,7 +35,8 @@ paypalRouter.post('/orders', requireAuth, async (req: Request, res: Response, ne
       throw new NotFoundError('User or wallet not found');
     }
 
-    const amountUsdStr = Number(parsed.data.amountUsd).toFixed(2);
+    const numVal = typeof parsed.data.amountUsd === 'number' ? parsed.data.amountUsd : parseFloat(parsed.data.amountUsd);
+    const amountUsdStr = numVal.toFixed(2);
     const amountMicroUsd = dollarsToMicroUsd(amountUsdStr);
 
     let orderId: string;
@@ -48,7 +52,12 @@ paypalRouter.post('/orders', requireAuth, async (req: Request, res: Response, ne
         },
         body: 'grant_type=client_credentials',
       });
-      const tokenData = await tokenRes.json() as { access_token: string };
+
+      if (!tokenRes.ok) {
+        throw new BadRequestError('Failed to authenticate with PayPal API');
+      }
+
+      const tokenData = (await tokenRes.json()) as { access_token: string };
 
       const orderRes = await fetch(`${env.PAYPAL_BASE_URL}/v2/checkout/orders`, {
         method: 'POST',
@@ -69,7 +78,12 @@ paypalRouter.post('/orders', requireAuth, async (req: Request, res: Response, ne
           ],
         }),
       });
-      const orderData = await orderRes.json() as { id: string };
+
+      if (!orderRes.ok) {
+        throw new BadRequestError('Failed to create order on PayPal');
+      }
+
+      const orderData = (await orderRes.json()) as { id: string };
       orderId = orderData.id;
     } else {
       // Mock PayPal adapter for dev and testing
@@ -117,6 +131,10 @@ paypalRouter.post('/orders/:orderId/capture', requireAuth, async (req: Request, 
       return sendSuccess(res, { orderId, status: 'COMPLETED', message: 'Order already captured' });
     }
 
+    if (order.status !== 'CREATED') {
+      throw new BadRequestError(`Order in ${order.status} state cannot be captured`);
+    }
+
     let captureData: unknown = { simulated: true };
 
     if (env.PAYMENT_ADAPTER === 'paypal' && env.PAYPAL_CLIENT_ID !== 'mock_client_id') {
@@ -129,7 +147,12 @@ paypalRouter.post('/orders/:orderId/capture', requireAuth, async (req: Request, 
         },
         body: 'grant_type=client_credentials',
       });
-      const tokenData = await tokenRes.json() as { access_token: string };
+
+      if (!tokenRes.ok) {
+        throw new BadRequestError('Failed to authenticate with PayPal API');
+      }
+
+      const tokenData = (await tokenRes.json()) as { access_token: string };
 
       const capRes = await fetch(`${env.PAYPAL_BASE_URL}/v2/checkout/orders/${orderId}/capture`, {
         method: 'POST',
@@ -138,10 +161,15 @@ paypalRouter.post('/orders/:orderId/capture', requireAuth, async (req: Request, 
           'Content-Type': 'application/json',
         },
       });
+
+      if (!capRes.ok) {
+        throw new BadRequestError('Failed to capture order on PayPal');
+      }
+
       captureData = await capRes.json();
     }
 
-    // Update order status
+    // Update order status atomically
     await prisma.paypalOrder.update({
       where: { id: order.id },
       data: {
@@ -171,8 +199,18 @@ paypalRouter.post('/orders/:orderId/capture', requireAuth, async (req: Request, 
 });
 
 // POST /api/webhooks/paypal (Webhook with signature deduplication)
-paypalRouter.post('/webhooks', async (req: Request, res: Response) => {
-  const event = req.body as { id?: string; event_type?: string; resource?: { id?: string; custom_id?: string; amount?: { value?: string } } };
+export async function handlePaypalWebhook(req: Request, res: Response) {
+  const event = req.body as {
+    id?: string;
+    event_type?: string;
+    resource?: {
+      id?: string;
+      custom_id?: string;
+      amount?: { value?: string };
+      supplementary_data?: { related_ids?: { order_id?: string } };
+    };
+  };
+
   const eventId = event.id || `evt_${Date.now()}`;
 
   // Invariant 11: Idempotent webhook processing using unique eventId
@@ -182,6 +220,30 @@ paypalRouter.post('/webhooks', async (req: Request, res: Response) => {
 
   if (existing) {
     return res.status(200).json({ status: 'IGNORED_DUPLICATE', message: 'Webhook already processed' });
+  }
+
+  // Deduplicate against already captured orders to avoid double-crediting
+  const orderId = event.resource?.supplementary_data?.related_ids?.order_id || event.resource?.id;
+  if (orderId) {
+    const existingTopup = await prisma.topup.findFirst({
+      where: {
+        OR: [{ paypalOrderId: orderId }, { paypalOrderId: eventId }],
+        status: 'COMPLETED',
+      },
+    });
+
+    if (existingTopup) {
+      await prisma.webhookEvent.create({
+        data: {
+          provider: 'PAYPAL',
+          eventId,
+          eventType: event.event_type || 'UNKNOWN',
+          payload: req.body,
+          status: 'IGNORED_ALREADY_CREDITED',
+        },
+      });
+      return res.status(200).json({ status: 'IGNORED_DUPLICATE', message: 'Order already credited' });
+    }
   }
 
   await prisma.webhookEvent.create({
@@ -194,7 +256,7 @@ paypalRouter.post('/webhooks', async (req: Request, res: Response) => {
     },
   });
 
-  // Handle capture completed event
+  // Handle capture completed event (e.g. async confirmation)
   if (event.event_type === 'PAYMENT.CAPTURE.COMPLETED' && event.resource?.custom_id) {
     const walletId = event.resource.custom_id;
     const amountVal = event.resource.amount?.value || '0';
@@ -211,4 +273,7 @@ paypalRouter.post('/webhooks', async (req: Request, res: Response) => {
   }
 
   return res.status(200).json({ status: 'SUCCESS' });
-});
+}
+
+paypalRouter.post('/webhooks', handlePaypalWebhook);
+paypalRouter.post('/', handlePaypalWebhook);
