@@ -1,0 +1,423 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model supporting multi-role flags (creator, consumer, admin)
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  isCreator    Boolean  @default(false)
+  isConsumer   Boolean  @default(true)
+  isAdmin      Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  wallet          Wallet?
+  tools           Tool[]           @relation("CreatorTools")
+  agents          Agent[]          @relation("ConsumerAgents")
+  creatorEarnings CreatorEarning[]
+  payoutRequests  PayoutRequest[]
+  auditLogs       AuditLog[]
+  abuseReports    AbuseReport[]    @relation("UserAbuseReports")
+
+  @@map("users")
+}
+
+// Consumer wallet for micro-USD balances
+model Wallet {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance         BigInt   @default(0) // Available micro-USD (1 USD = 1,000,000 micro-USD)
+  reservedBalance BigInt   @default(0) // Currently reserved micro-USD
+  currency        String   @default("USD")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  reservations  WalletReservation[]
+  ledgerEntries LedgerEntry[]
+  topups        Topup[]
+
+  @@map("wallets")
+}
+
+// Atomic fund reservations before tool execution
+model WalletReservation {
+  id         String   @id @default(uuid())
+  walletId   String
+  wallet     Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  agentId    String?
+  toolId     String?
+  callId     String?  @unique
+  amount     BigInt   // micro-USD
+  status     String   @default("RESERVED") // RESERVED, CAPTURED, RELEASED
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([walletId, status])
+  @@map("wallet_reservations")
+}
+
+// Append-only double-entry ledger
+model LedgerEntry {
+  id            String   @id @default(uuid())
+  walletId      String?
+  wallet        Wallet?  @relation(fields: [walletId], references: [id], onDelete: SetNull)
+  callId        String?
+  account       String   // USER_WALLET, WALLET_RESERVED, CREATOR_PAYABLE, PLATFORM_REVENUE, PAYOUT_CLEARING, EXTERNAL_PAYPAL
+  entryType     String   // CREDIT, DEBIT
+  amount        BigInt   // micro-USD
+  balanceAfter  BigInt?
+  description   String
+  referenceType String?  // CALL, TOPUP, PAYOUT, REVERSAL, ADJUSTMENT
+  referenceId   String?
+  createdAt     DateTime @default(now())
+
+  @@index([walletId, createdAt])
+  @@index([referenceId])
+  @@index([callId])
+  @@map("ledger_entries")
+}
+
+// Agent entity owned by consumer
+model Agent {
+  id                        String   @id @default(uuid())
+  userId                    String
+  user                      User     @relation("ConsumerAgents", fields: [userId], references: [id], onDelete: Cascade)
+  name                      String
+  description               String?
+  isActive                  Boolean  @default(true)
+  maxPerCallMicroUsd        BigInt   @default(1000000)  // $1.00 max per call
+  dailyBudgetMicroUsd       BigInt   @default(50000000) // $50.00 daily
+  monthlyBudgetMicroUsd     BigInt   @default(500000000)// $500.00 monthly
+  approvalThresholdMicroUsd BigInt   @default(5000000)  // $5.00 triggers approval
+  autoApproveTags           String[] @default([])
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  credentials AgentCredential[]
+  permissions AgentPermission[]
+  toolCalls   ToolCall[]
+
+  @@index([userId])
+  @@map("agents")
+}
+
+// High-entropy credentials shown once at creation
+model AgentCredential {
+  id         String    @id @default(uuid())
+  agentId    String
+  agent      Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  prefix     String    // e.g., "tt_live_abc123"
+  tokenHash  String    @unique
+  name       String    @default("Default Key")
+  scopes     String[]  @default(["tools:execute", "tools:read"])
+  expiresAt  DateTime?
+  revokedAt  DateTime?
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([agentId])
+  @@index([prefix])
+  @@map("agent_credentials")
+}
+
+// Scoped permissions for agents
+model AgentPermission {
+  id        String   @id @default(uuid())
+  agentId   String
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  toolId    String?
+  category  String?
+  isAllowed Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([agentId, toolId])
+  @@index([agentId])
+  @@map("agent_permissions")
+}
+
+// Tool registered by creator
+model Tool {
+  id                  String   @id @default(uuid())
+  creatorId           String
+  creator             User     @relation("CreatorTools", fields: [creatorId], references: [id], onDelete: Cascade)
+  name                String
+  slug                String   @unique
+  shortDescription    String
+  detailedDescription String
+  category            String
+  tags                String[] @default([])
+  baseUrl             String
+  endpointPath        String
+  httpMethod          String   @default("POST")
+  inputSchema         Json
+  outputSchema        Json?
+  authMethod          String   @default("NONE") // NONE, API_KEY_HEADER, BEARER_TOKEN
+  authHeaderName      String?
+  encryptedSecret     String?  // AES-256-GCM encrypted
+  secretKeyVersion    String?
+  priceMicroUsd       BigInt   @default(1000) // micro-USD per call
+  currency            String   @default("USD")
+  timeoutMs           Int      @default(15000)
+  rateLimitPerMinute  Int      @default(60)
+  terms               String?
+  supportContact      String?
+  status              String   @default("DRAFT") // DRAFT, TESTING, PENDING_REVIEW, APPROVED, REJECTED, SUSPENDED, PAUSED, RETIRED
+  version             Int      @default(1)
+  isDemo              Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  versions       ToolVersion[]
+  testRuns       ToolTestRun[]
+  calls          ToolCall[]
+  adminReviews   AdminReview[]
+  qualityReviews QualityReview[]
+  abuseReports   AbuseReport[]
+
+  @@index([creatorId])
+  @@index([category])
+  @@index([status])
+  @@map("tools")
+}
+
+// Tool versioning for immutable pricing and schema history
+model ToolVersion {
+  id            String   @id @default(uuid())
+  toolId        String
+  tool          Tool     @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  version       Int
+  inputSchema   Json
+  outputSchema  Json?
+  priceMicroUsd BigInt
+  endpointPath  String
+  httpMethod    String
+  authMethod    String
+  createdAt     DateTime @default(now())
+
+  @@unique([toolId, version])
+  @@index([toolId])
+  @@map("tool_versions")
+}
+
+// Verification test runs for tools
+model ToolTestRun {
+  id             String   @id @default(uuid())
+  toolId         String
+  tool           Tool     @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  sampleInput    Json
+  responseStatus Int?
+  responseBody   Json?
+  latencyMs      Int?
+  isSuccess      Boolean
+  errorMessage   String?
+  createdAt      DateTime @default(now())
+
+  @@index([toolId])
+  @@map("tool_test_runs")
+}
+
+// Record of every paid tool execution
+model ToolCall {
+  id                      String    @id @default(uuid())
+  agentId                 String
+  agent                   Agent     @relation(fields: [agentId], references: [id])
+  toolId                  String
+  tool                    Tool      @relation(fields: [toolId], references: [id])
+  idempotencyKey          String
+  priceMicroUsd           BigInt
+  platformFeeBps          Int
+  platformFeeMicroUsd     BigInt
+  creatorEarningsMicroUsd BigInt
+  status                  String    // PENDING, EXECUTING, SUCCESS, FAILED, REVERSED, APPROVAL_REQUIRED
+  sanitizedInput          Json
+  sanitizedOutput         Json?
+  httpStatus              Int?
+  latencyMs               Int?
+  failureReason           String?
+  isReversed              Boolean   @default(false)
+  createdAt               DateTime  @default(now())
+  completedAt             DateTime?
+
+  creatorEarning CreatorEarning?
+
+  @@unique([agentId, idempotencyKey])
+  @@index([toolId, status])
+  @@index([agentId, createdAt])
+  @@map("tool_calls")
+}
+
+// Creator earnings per paid execution
+model CreatorEarning {
+  id                  String    @id @default(uuid())
+  creatorId           String
+  creator             User      @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  toolCallId          String?   @unique
+  toolCall            ToolCall? @relation(fields: [toolCallId], references: [id], onDelete: SetNull)
+  toolId              String
+  grossMicroUsd       BigInt
+  platformFeeMicroUsd BigInt
+  netMicroUsd         BigInt
+  status              String    @default("PAYABLE") // PENDING, PAYABLE, PAID_OUT, REVERSED
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([creatorId])
+  @@index([toolId])
+  @@map("creator_earnings")
+}
+
+// Wallet Top-up records
+model Topup {
+  id             String   @id @default(uuid())
+  walletId       String
+  wallet         Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  amountMicroUsd BigInt
+  provider       String   // PAYPAL, MOCK
+  status         String   // PENDING, COMPLETED, FAILED
+  paypalOrderId  String?  @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([walletId])
+  @@map("topups")
+}
+
+// PayPal orders tracking
+model PaypalOrder {
+  id             String   @id @default(uuid())
+  userId         String
+  walletId       String
+  orderId        String   @unique
+  amountUsd      String
+  amountMicroUsd BigInt
+  currency       String   @default("USD")
+  status         String   // CREATED, APPROVED, COMPLETED, FAILED
+  rawCapture     Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId])
+  @@index([orderId])
+  @@map("paypal_orders")
+}
+
+// Deduplication and tracking for webhook events
+model WebhookEvent {
+  id          String   @id @default(uuid())
+  provider    String   @default("PAYPAL")
+  eventId     String   @unique
+  eventType   String
+  resourceType String?
+  payload     Json
+  status      String   @default("PROCESSED") // RECEIVED, PROCESSED, FAILED, IGNORED_DUPLICATE
+  processedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([eventId])
+  @@map("webhook_events")
+}
+
+// Creator payout requests
+model PayoutRequest {
+  id              String   @id @default(uuid())
+  creatorId       String
+  creator         User     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  amountMicroUsd  BigInt
+  status          String   @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED, REJECTED
+  payoutMethod    String   @default("PAYPAL")
+  destination     String
+  externalBatchId String?
+  isSimulated     Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([creatorId])
+  @@map("payout_requests")
+}
+
+// Quality evaluations (Layer A deterministic & Layer B semantic)
+model QualityReview {
+  id        String   @id @default(uuid())
+  toolId    String
+  tool      Tool     @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  callId    String?
+  layer     String   // LAYER_A_DETERMINISTIC, LAYER_B_SEMANTIC
+  passed    Boolean
+  score     Float?
+  reason    String
+  evidence  Json?
+  createdAt DateTime @default(now())
+
+  @@index([toolId])
+  @@map("quality_reviews")
+}
+
+// Audit trail for security, identity, and financial actions
+model AuditLog {
+  id           String   @id @default(uuid())
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  agentId      String?
+  action       String   // CREDENTIAL_CREATED, CREDENTIAL_REVOKED, TOOL_SUBMITTED, TOOL_APPROVED, etc.
+  resourceType String
+  resourceId   String?
+  metadata     Json?
+  ipAddress    String?
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@map("audit_logs")
+}
+
+// Admin moderation decisions
+model AdminReview {
+  id        String   @id @default(uuid())
+  toolId    String
+  tool      Tool     @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  adminId   String
+  decision  String   // APPROVED, REJECTED, SUSPENDED
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([toolId])
+  @@map("admin_reviews")
+}
+
+// Abuse reports
+model AbuseReport {
+  id         String   @id @default(uuid())
+  reporterId String?
+  reporter   User?    @relation("UserAbuseReports", fields: [reporterId], references: [id], onDelete: SetNull)
+  toolId     String
+  tool       Tool     @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  callId     String?
+  reason     String
+  status     String   @default("PENDING") // PENDING, RESOLVED, DISMISSED
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([toolId])
+  @@map("abuse_reports")
+}
+
+// Platform configurable settings
+model PlatformSetting {
+  key         String   @id
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("platform_settings")
+}

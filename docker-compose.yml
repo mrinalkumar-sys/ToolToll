@@ -1,0 +1,62 @@
+services:
+  postgres:
+    image: postgres:alpine
+    container_name: tooltoll-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: tooltoll
+      POSTGRES_PASSWORD: tooltoll
+      POSTGRES_DB: tooltoll_db
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tooltoll -d tooltoll_db"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: tooltoll-backend
+    restart: always
+    environment:
+      APP_ENV: development
+      PORT: 4000
+      DATABASE_URL: postgresql://tooltoll:tooltoll@postgres:5432/tooltoll_db?schema=public
+      FRONTEND_URL: http://localhost:5173
+      BACKEND_URL: http://localhost:4000
+      CORS_ORIGINS: http://localhost:5173,http://localhost:4000
+      AUTH_SECRET_KEY: super-secret-jwt-signing-key-tooltoll-mvp-32chars-min
+      CREDENTIAL_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      CREDENTIAL_ENCRYPTION_KEY_VERSION: v1
+      LLM_PROVIDER: mock
+      LLM_API_KEY: mock-key
+      PAYMENT_ADAPTER: mock
+      PAYOUT_ADAPTER: mock
+      PLATFORM_FEE_BPS: 1000
+      TOOL_EXECUTION_TIMEOUT_MS: 15000
+      MAX_REQUEST_SIZE: 1048576
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: tooltoll-frontend
+    restart: always
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
