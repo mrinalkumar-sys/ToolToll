@@ -11,7 +11,6 @@ import {
   Hammer,
   Brain,
   LogIn,
-  LogOut,
   Plus,
   Menu,
   X,
@@ -63,16 +62,25 @@ export const Navbar: React.FC<NavbarProps> = ({
     setMobileMenuOpen(false);
   };
 
-  const navItems: { id: NavTab; label: string; icon: React.FC<{ size?: number }> }[] = [
-    { id: 'marketplace', label: 'Marketplace', icon: Store },
-    { id: 'playground', label: 'Playground', icon: Bot },
-    { id: 'agents', label: 'My Agents', icon: Bot },
-    { id: 'creator', label: 'Creator Studio', icon: Hammer },
-    { id: 'wallet', label: 'Wallet', icon: Wallet },
-    { id: 'ai', label: 'AI Service', icon: Brain },
-  ];
+  // Navigation items based on authentication status:
+  // - Before login (public): Marketplace, Playground, AI Service
+  // - After login (authenticated): Marketplace, Playground, My Agents, Creator Studio, Wallet, AI Service (+ Admin if admin)
+  const navItems: { id: NavTab; label: string; icon: React.FC<{ size?: number }> }[] = isAuthenticated
+    ? [
+        { id: 'marketplace', label: 'Marketplace', icon: Store },
+        { id: 'playground', label: 'Playground', icon: Bot },
+        { id: 'agents', label: 'My Agents', icon: Bot },
+        { id: 'creator', label: 'Creator Studio', icon: Hammer },
+        { id: 'wallet', label: 'Wallet', icon: Wallet },
+        { id: 'ai', label: 'AI Service', icon: Brain },
+      ]
+    : [
+        { id: 'marketplace', label: 'Marketplace', icon: Store },
+        { id: 'playground', label: 'Playground', icon: Bot },
+        { id: 'ai', label: 'AI Service', icon: Brain },
+      ];
 
-  if (user?.isAdmin) {
+  if (isAuthenticated && user?.isAdmin) {
     navItems.push({ id: 'admin', label: 'Admin', icon: Shield });
   }
 
@@ -108,6 +116,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             gap: '12px',
             cursor: 'pointer',
             userSelect: 'none',
+            flexShrink: 0,
           }}
         >
           <div
@@ -166,11 +175,17 @@ export const Navbar: React.FC<NavbarProps> = ({
           style={{
             display: 'none',
             alignItems: 'center',
-            gap: '2px',
+            justifyContent: 'center',
+            gap: '4px',
             background: 'rgba(255, 255, 255, 0.03)',
             padding: '4px',
             borderRadius: 'var(--radius-sm)',
             border: '1px solid var(--border-dark)',
+            flex: 1,
+            width: '100%',
+            maxWidth: isAuthenticated ? (user?.isAdmin ? '860px' : '800px') : '540px',
+            margin: '0 auto',
+            minWidth: 0,
           }}
           className="desktop-nav"
         >
@@ -182,16 +197,27 @@ export const Navbar: React.FC<NavbarProps> = ({
                 key={item.id}
                 className="btn btn-sm"
                 style={{
+                  flex: 1,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
                   background: isActive ? 'rgba(255, 255, 255, 0.09)' : 'transparent',
                   color: isActive ? '#FFFFFF' : 'var(--text-dark-secondary)',
                   border: isActive ? '1px solid var(--border-dark-hover)' : '1px solid transparent',
                   fontWeight: isActive ? 700 : 500,
                   position: 'relative',
+                  whiteSpace: 'nowrap',
+                  padding: '7px 12px',
+                  borderRadius: 'var(--radius-xs)',
+                  transition: 'all 0.15s ease',
+                  cursor: 'pointer',
+                  minWidth: 0,
                 }}
                 onClick={() => handleTabClick(item.id)}
               >
                 <Icon size={14} />
-                {item.label}
+                <span>{item.label}</span>
                 {isActive && (
                   <span
                     style={{
@@ -199,7 +225,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       bottom: '-5px',
                       left: '50%',
                       transform: 'translateX(-50%)',
-                      width: '16px',
+                      width: '24px',
                       height: '2px',
                       backgroundColor: 'var(--brand-orange)',
                       borderRadius: '2px',
@@ -218,7 +244,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             alignItems: 'center',
             gap: '10px',
             flexShrink: 0,
-            marginLeft: 'auto',
           }}
         >
           {isAuthenticated ? (
@@ -399,6 +424,15 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Inline styles for media query handling */}
       <style>{`
+        .desktop-nav .btn {
+          white-space: nowrap !important;
+          flex: 1 1 0% !important;
+          min-width: 0 !important;
+        }
+        .desktop-nav .btn:hover:not(:disabled) {
+          background: rgba(255, 255, 255, 0.08) !important;
+          color: #FFFFFF !important;
+        }
         @media (min-width: 1100px) {
           .desktop-nav { display: flex !important; }
           .mobile-menu-btn { display: none !important; }
