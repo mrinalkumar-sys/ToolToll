@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { AuthProvider } from './context/AuthContext';
+import React, { useState, useEffect } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { Navbar, NavTab } from './components/common/Navbar';
 import { Footer } from './components/common/Footer';
 import { AuthModal } from './components/common/AuthModal';
@@ -14,11 +14,21 @@ import { AiIntelligenceView } from './components/views/AiIntelligenceView';
 import { Tool } from './types';
 
 function MainApp() {
+  const { isAuthenticated } = useAuth();
   const [currentTab, setCurrentTab] = useState<NavTab>('marketplace');
+  const [selectedToolForPlayground, setSelectedToolForPlayground] = useState<Tool | null>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [topupModalOpen, setTopupModalOpen] = useState(false);
 
+  // If user logs out, securely redirect protected pages back to marketplace
+  useEffect(() => {
+    if (!isAuthenticated && (currentTab === 'admin' || currentTab === 'creator' || currentTab === 'wallet' || currentTab === 'agents')) {
+      setCurrentTab('marketplace');
+    }
+  }, [isAuthenticated, currentTab]);
+
   const handleSelectToolForPlayground = (tool: Tool) => {
+    setSelectedToolForPlayground(tool);
     setCurrentTab('playground');
   };
 
@@ -39,7 +49,9 @@ function MainApp() {
           />
         )}
 
-        {currentTab === 'playground' && <PlaygroundView />}
+        {currentTab === 'playground' && (
+          <PlaygroundView initialTool={selectedToolForPlayground} />
+        )}
 
         {currentTab === 'agents' && <AgentManagementView />}
 

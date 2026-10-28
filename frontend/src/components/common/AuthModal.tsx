@@ -45,17 +45,29 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
         <div className="modal-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Sparkles size={18} color="var(--accent-cyan)" />
-            <h3 style={{ fontSize: '1.15rem' }}>
-              {tab === 'login' ? 'Sign In to ToolToll' : 'Create an Account'}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div
+              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: 'var(--radius-xs)',
+                background: 'var(--brand-orange)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Sparkles size={16} color="#FFFFFF" strokeWidth={2.5} />
+            </div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#FFFFFF' }}>
+              {tab === 'login' ? 'Sign In to ToolToll' : 'Create Machine Account'}
             </h3>
           </div>
           <button
             onClick={onClose}
-            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+            style={{ background: 'none', border: 'none', color: 'var(--text-dark-muted)', cursor: 'pointer' }}
           >
             <X size={20} />
           </button>
@@ -65,27 +77,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           {/* Quick 1-Click Demo Accounts */}
           <div
             style={{
-              padding: '14px',
-              borderRadius: 'var(--radius-md)',
-              background: 'rgba(6, 182, 212, 0.05)',
-              border: '1px solid rgba(6, 182, 212, 0.2)',
-              marginBottom: '20px',
+              padding: '16px',
+              borderRadius: 'var(--radius-sm)',
+              background: 'rgba(255, 85, 0, 0.05)',
+              border: '1px solid var(--brand-orange-border)',
+              marginBottom: '22px',
             }}
           >
-            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-cyan-light)', marginBottom: '8px' }}>
-              ⚡ 1-CLICK INSTANT DEMO ACCOUNTS
+            <div style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--brand-orange)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>
+              ⚡ 1-CLICK INSTANT DEMO ROLES
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
               <button
                 type="button"
                 className="btn btn-secondary btn-sm"
                 onClick={() => handleDemoLogin('consumer')}
                 disabled={isLoading}
-                style={{ flexDirection: 'column', padding: '10px 4px', gap: '4px' }}
+                style={{ flexDirection: 'column', padding: '12px 6px', gap: '6px' }}
               >
-                <ShoppingCart size={16} color="var(--accent-cyan)" />
-                <span style={{ fontSize: '0.75rem' }}>Consumer</span>
-                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>$50 Bal</span>
+                <ShoppingCart size={18} color="var(--brand-orange)" />
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#FFFFFF' }}>Consumer</span>
+                <span style={{ fontSize: '0.68rem', color: 'var(--text-dark-muted)' }}>Agent Owner</span>
               </button>
 
               <button
@@ -93,11 +105,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 className="btn btn-secondary btn-sm"
                 onClick={() => handleDemoLogin('creator')}
                 disabled={isLoading}
-                style={{ flexDirection: 'column', padding: '10px 4px', gap: '4px' }}
+                style={{ flexDirection: 'column', padding: '12px 6px', gap: '6px' }}
               >
-                <Hammer size={16} color="var(--accent-amber)" />
-                <span style={{ fontSize: '0.75rem' }}>Creator</span>
-                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>$25 Bal</span>
+                <Hammer size={18} color="#FBBF24" />
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#FFFFFF' }}>Creator</span>
+                <span style={{ fontSize: '0.68rem', color: 'var(--text-dark-muted)' }}>API Dev</span>
               </button>
 
               <button
@@ -105,20 +117,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 className="btn btn-secondary btn-sm"
                 onClick={() => handleDemoLogin('admin')}
                 disabled={isLoading}
-                style={{ flexDirection: 'column', padding: '10px 4px', gap: '4px' }}
+                style={{ flexDirection: 'column', padding: '12px 6px', gap: '6px' }}
               >
-                <Shield size={16} color="var(--accent-rose)" />
-                <span style={{ fontSize: '0.75rem' }}>Admin</span>
-                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Full Access</span>
+                <Shield size={18} color="#34D399" />
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#FFFFFF' }}>Admin</span>
+                <span style={{ fontSize: '0.68rem', color: 'var(--text-dark-muted)' }}>Full Access</span>
               </button>
             </div>
           </div>
 
+          {/* Form Tabs */}
           <div
             style={{
               display: 'flex',
-              borderBottom: '1px solid var(--border-subtle)',
-              marginBottom: '16px',
+              borderBottom: '1px solid var(--border-dark)',
+              marginBottom: '20px',
             }}
           >
             <button
@@ -126,48 +139,50 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               onClick={() => setTab('login')}
               style={{
                 flex: 1,
-                padding: '8px',
+                padding: '10px',
                 background: 'none',
                 border: 'none',
-                borderBottom: tab === 'login' ? '2px solid var(--accent-cyan)' : '2px solid transparent',
-                color: tab === 'login' ? 'var(--text-primary)' : 'var(--text-muted)',
-                fontWeight: 600,
+                borderBottom: tab === 'login' ? '2px solid var(--brand-orange)' : '2px solid transparent',
+                color: tab === 'login' ? '#FFFFFF' : 'var(--text-dark-muted)',
+                fontWeight: tab === 'login' ? 800 : 600,
                 cursor: 'pointer',
+                fontSize: '0.9rem',
               }}
             >
-              Login
+              Sign In
             </button>
             <button
               type="button"
               onClick={() => setTab('register')}
               style={{
                 flex: 1,
-                padding: '8px',
+                padding: '10px',
                 background: 'none',
                 border: 'none',
-                borderBottom: tab === 'register' ? '2px solid var(--accent-cyan)' : '2px solid transparent',
-                color: tab === 'register' ? 'var(--text-primary)' : 'var(--text-muted)',
-                fontWeight: 600,
+                borderBottom: tab === 'register' ? '2px solid var(--brand-orange)' : '2px solid transparent',
+                color: tab === 'register' ? '#FFFFFF' : 'var(--text-dark-muted)',
+                fontWeight: tab === 'register' ? 800 : 600,
                 cursor: 'pointer',
+                fontSize: '0.9rem',
               }}
             >
-              Register
+              Create Account
             </button>
           </div>
 
           {error && (
             <div
               style={{
-                padding: '10px 14px',
+                padding: '12px 16px',
                 borderRadius: 'var(--radius-sm)',
-                background: 'rgba(244, 63, 94, 0.1)',
-                border: '1px solid rgba(244, 63, 94, 0.3)',
-                color: '#fb7185',
-                fontSize: '0.82rem',
+                background: 'var(--status-rose-bg)',
+                border: '1px solid var(--status-rose-border)',
+                color: '#F87171',
+                fontSize: '0.85rem',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                marginBottom: '16px',
+                marginBottom: '18px',
               }}
             >
               <AlertCircle size={16} />
@@ -196,7 +211,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                     value={role}
                     onChange={(e) => setRole(e.target.value as any)}
                   >
-                    <option value="consumer">Consumer (Deploy agents & use APIs)</option>
+                    <option value="consumer">Consumer (Deploy agents & invoke APIs)</option>
                     <option value="creator">Creator (Register & monetize APIs)</option>
                   </select>
                 </div>
@@ -231,9 +246,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               type="submit"
               className="btn btn-primary"
               disabled={isLoading}
-              style={{ width: '100%', marginTop: '8px' }}
+              style={{ width: '100%', marginTop: '10px', padding: '12px' }}
             >
-              {isLoading ? 'Authenticating...' : tab === 'login' ? 'Sign In' : 'Create Account'}
+              {isLoading ? 'Authenticating...' : tab === 'login' ? 'Sign In to Dashboard' : 'Complete Registration'}
             </button>
           </form>
         </div>

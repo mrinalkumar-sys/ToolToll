@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { formatMicroUsd } from '../../utils/formatters';
-import { X, CreditCard, Sparkles, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, CreditCard, Sparkles, CheckCircle, AlertCircle, Zap } from 'lucide-react';
 
 interface TopupModalProps {
   isOpen: boolean;
@@ -10,7 +10,7 @@ interface TopupModalProps {
 }
 
 export const TopupModal: React.FC<TopupModalProps> = ({ isOpen, onClose }) => {
-  const { wallet, refreshWallet } = useAuth();
+  const { wallet, refreshWallet, isAuthenticated, loginDemo } = useAuth();
   const [selectedAmount, setSelectedAmount] = useState<number>(10); // USD
   const [customAmount, setCustomAmount] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -29,6 +29,9 @@ export const TopupModal: React.FC<TopupModalProps> = ({ isOpen, onClose }) => {
     setErrorMessage(null);
 
     try {
+      if (!isAuthenticated) {
+        await loginDemo('consumer');
+      }
       await api.mockTopup(currentMicroUsd);
       await refreshWallet();
       setSuccessMessage(`Successfully credited $${currentAmount.toFixed(2)} to your wallet!`);
@@ -50,11 +53,9 @@ export const TopupModal: React.FC<TopupModalProps> = ({ isOpen, onClose }) => {
 
     try {
       const order = await api.createPaypalOrder(currentAmount.toFixed(2));
-      // In mock/sandbox mode, capture directly or redirect to PayPal approval
       if (order.approvalUrl && order.approvalUrl.startsWith('http')) {
         window.open(order.approvalUrl, '_blank');
       } else {
-        // Mock capture directly
         await api.capturePaypalOrder(order.orderId);
         await refreshWallet();
         setSuccessMessage(`PayPal Mock Order ${order.orderId} captured and credited!`);
@@ -72,66 +73,79 @@ export const TopupModal: React.FC<TopupModalProps> = ({ isOpen, onClose }) => {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '460px' }}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
         <div className="modal-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <CreditCard size={18} color="var(--accent-emerald)" />
-            <h3 style={{ fontSize: '1.15rem' }}>Top-up Wallet Balance</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div
+              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: 'var(--radius-xs)',
+                background: 'var(--brand-orange)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <CreditCard size={16} color="#FFFFFF" />
+            </div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#FFFFFF' }}>Top Up Wallet Balance</h3>
           </div>
           <button
             onClick={onClose}
-            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+            style={{ background: 'none', border: 'none', color: 'var(--text-dark-muted)', cursor: 'pointer' }}
           >
             <X size={20} />
           </button>
         </div>
 
         <div className="modal-body">
+          {/* Current Balance Row */}
           <div
             style={{
-              padding: '12px 16px',
-              borderRadius: 'var(--radius-md)',
-              background: 'rgba(255, 255, 255, 0.03)',
-              border: '1px solid var(--border-subtle)',
+              padding: '16px 20px',
+              borderRadius: 'var(--radius-sm)',
+              background: 'rgba(255, 255, 255, 0.02)',
+              border: '1px solid var(--border-dark)',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              marginBottom: '20px',
+              marginBottom: '22px',
             }}
           >
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Current Balance:</span>
-            <span style={{ fontWeight: 700, fontSize: '1.1rem', color: '#34d399', fontFamily: 'var(--font-mono)' }}>
+            <span style={{ fontSize: '0.86rem', color: 'var(--text-dark-secondary)' }}>Current Balance:</span>
+            <span style={{ fontWeight: 800, fontSize: '1.3rem', color: '#34D399', fontFamily: 'var(--font-mono)' }}>
               {formatMicroUsd(wallet?.balance)}
             </span>
           </div>
 
-          <label className="form-label" style={{ marginBottom: '8px' }}>Select Amount (USD)</label>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '16px' }}>
-            {[5, 10, 25, 50].map((amt) => (
-              <button
-                key={amt}
-                type="button"
-                className="btn"
-                style={{
-                  background:
-                    selectedAmount === amt && !customAmount
-                      ? 'var(--accent-cyan-glow)'
-                      : 'rgba(255, 255, 255, 0.04)',
-                  borderColor:
-                    selectedAmount === amt && !customAmount
-                      ? 'var(--accent-cyan)'
-                      : 'var(--border-subtle)',
-                  color: selectedAmount === amt && !customAmount ? 'var(--accent-cyan-light)' : 'var(--text-primary)',
-                  fontWeight: 700,
-                }}
-                onClick={() => {
-                  setSelectedAmount(amt);
-                  setCustomAmount('');
-                }}
-              >
-                ${amt}
-              </button>
-            ))}
+          <label className="form-label" style={{ marginBottom: '10px' }}>Select Deposit Amount (USD)</label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '18px' }}>
+            {[5, 10, 25, 50].map((amt) => {
+              const isSelected = selectedAmount === amt && !customAmount;
+              return (
+                <button
+                  key={amt}
+                  type="button"
+                  className="btn"
+                  style={{
+                    background: isSelected ? 'var(--brand-orange)' : 'rgba(255, 255, 255, 0.04)',
+                    borderColor: isSelected ? 'var(--brand-orange)' : 'var(--border-dark)',
+                    color: isSelected ? '#FFFFFF' : 'var(--text-dark-primary)',
+                    fontWeight: 800,
+                    borderRadius: 'var(--radius-xs)',
+                    padding: '12px 6px',
+                    fontSize: '1rem',
+                  }}
+                  onClick={() => {
+                    setSelectedAmount(amt);
+                    setCustomAmount('');
+                  }}
+                >
+                  ${amt}
+                </button>
+              );
+            })}
           </div>
 
           <div className="form-group">
@@ -150,28 +164,35 @@ export const TopupModal: React.FC<TopupModalProps> = ({ isOpen, onClose }) => {
 
           <div
             style={{
-              fontSize: '0.8rem',
-              color: 'var(--text-muted)',
-              marginBottom: '20px',
+              fontSize: '0.84rem',
+              color: 'var(--text-dark-secondary)',
+              marginBottom: '22px',
               textAlign: 'center',
+              padding: '10px',
+              background: 'rgba(255, 255, 255, 0.02)',
+              borderRadius: 'var(--radius-xs)',
+              border: '1px solid var(--border-dark)',
             }}
           >
-            Credit: <strong style={{ color: 'var(--text-primary)' }}>{(currentAmount || 0) * 1_000_000} Micro-USD (µUSD)</strong>
+            Credit to Ledger:{' '}
+            <strong style={{ color: 'var(--brand-orange)', fontFamily: 'var(--font-mono)' }}>
+              {((currentAmount || 0) * 1_000_000).toLocaleString()} Micro-USD (µUSD)
+            </strong>
           </div>
 
           {successMessage && (
             <div
               style={{
-                padding: '10px 14px',
+                padding: '12px 16px',
                 borderRadius: 'var(--radius-sm)',
-                background: 'rgba(16, 185, 129, 0.1)',
-                border: '1px solid rgba(16, 185, 129, 0.3)',
-                color: '#34d399',
-                fontSize: '0.85rem',
+                background: 'var(--status-emerald-bg)',
+                border: '1px solid var(--status-emerald-border)',
+                color: '#34D399',
+                fontSize: '0.88rem',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                marginBottom: '16px',
+                marginBottom: '18px',
               }}
             >
               <CheckCircle size={16} />
@@ -182,16 +203,16 @@ export const TopupModal: React.FC<TopupModalProps> = ({ isOpen, onClose }) => {
           {errorMessage && (
             <div
               style={{
-                padding: '10px 14px',
+                padding: '12px 16px',
                 borderRadius: 'var(--radius-sm)',
-                background: 'rgba(244, 63, 94, 0.1)',
-                border: '1px solid rgba(244, 63, 94, 0.3)',
-                color: '#fb7185',
-                fontSize: '0.85rem',
+                background: 'var(--status-rose-bg)',
+                border: '1px solid var(--status-rose-border)',
+                color: '#F87171',
+                fontSize: '0.88rem',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                marginBottom: '16px',
+                marginBottom: '18px',
               }}
             >
               <AlertCircle size={16} />
@@ -199,16 +220,16 @@ export const TopupModal: React.FC<TopupModalProps> = ({ isOpen, onClose }) => {
             </div>
           )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <button
               type="button"
               className="btn btn-primary"
               disabled={isProcessing || !currentAmount || currentAmount <= 0}
               onClick={handleDevMockTopup}
-              style={{ width: '100%' }}
+              style={{ width: '100%', padding: '12px' }}
             >
-              <Sparkles size={16} />
-              {isProcessing ? 'Processing...' : `1-Click Dev Instant Top-up ($${currentAmount || 0})`}
+              <Zap size={16} />
+              {isProcessing ? 'Processing Deposit...' : `1-Click Instant Deposit ($${currentAmount || 0})`}
             </button>
 
             <button
@@ -216,10 +237,10 @@ export const TopupModal: React.FC<TopupModalProps> = ({ isOpen, onClose }) => {
               className="btn btn-secondary"
               disabled={isProcessing || !currentAmount || currentAmount <= 0}
               onClick={handlePayPalTopup}
-              style={{ width: '100%', borderColor: '#0070ba', color: '#38bdf8' }}
+              style={{ width: '100%', padding: '12px' }}
             >
               <CreditCard size={16} />
-              Pay with PayPal Sandbox
+              Checkout with PayPal Sandbox
             </button>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { Tool, ReconciliationReport, AuditLog } from '../../types';
 import { formatMicroUsd, formatDate } from '../../utils/formatters';
@@ -6,14 +7,16 @@ import {
   Shield,
   CheckCircle,
   XCircle,
-  AlertTriangle,
   Scale,
   Percent,
   Activity,
   X,
+  AlertTriangle,
+  Zap,
 } from 'lucide-react';
 
 export const AdminView: React.FC = () => {
+  const { user, loginDemo } = useAuth();
   const [activeTab, setActiveTab] = useState<'moderation' | 'reconciliation' | 'commission' | 'audit'>('moderation');
   const [pendingTools, setPendingTools] = useState<Tool[]>([]);
   const [reconciliation, setReconciliation] = useState<ReconciliationReport | null>(null);
@@ -79,347 +82,444 @@ export const AdminView: React.FC = () => {
     }
   };
 
-  return (
-    <div>
-      {/* Header */}
-      <div style={{ marginBottom: '28px' }}>
-        <div className="badge badge-rose" style={{ marginBottom: '8px' }}>
-          <Shield size={13} />
-          Platform Governance & Security
+  if (!user?.isAdmin) {
+    return (
+      <div className="section-dark" style={{ minHeight: '85vh', paddingTop: '80px', textAlign: 'center' }}>
+        <div className="container-editorial" style={{ maxWidth: '580px' }}>
+          <div
+            style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: 'var(--radius-sm)',
+              background: 'rgba(255, 85, 0, 0.1)',
+              border: '1px solid var(--brand-orange-border)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 24px',
+            }}
+          >
+            <Shield size={32} color="var(--brand-orange)" />
+          </div>
+          <h2
+            style={{
+              fontSize: 'clamp(1.35rem, 3vw, 1.8rem)',
+              maxWidth: '100%',
+              overflowWrap: 'break-word',
+              wordBreak: 'break-word',
+              fontWeight: 900,
+              color: '#FFFFFF',
+              marginBottom: '12px',
+            }}
+          >
+            Administrator Privileges Required
+          </h2>
+          <p style={{ color: 'var(--text-dark-secondary)', marginBottom: '28px', lineHeight: 1.6 }}>
+            The governance and financial reconciliation console is restricted to platform operators with cryptographic administrative privileges.
+          </p>
+          <button
+            className="btn btn-primary btn-lg"
+            onClick={async () => {
+              await loginDemo('admin');
+              fetchData();
+            }}
+          >
+            <Shield size={18} />
+            Sign In with 1-Click Admin Demo
+          </button>
         </div>
-        <h1 style={{ fontSize: '2.2rem', marginBottom: '8px' }}>Administrator Governance Center</h1>
-        <p style={{ color: 'var(--text-secondary)', maxWidth: '750px' }}>
-          Moderate pending API submissions, review financial reconciliation reports, adjust platform commission basis points, and audit security events.
-        </p>
       </div>
+    );
+  }
 
-      {/* Tabs */}
-      <div
-        style={{
-          display: 'flex',
-          gap: '12px',
-          borderBottom: '1px solid var(--border-subtle)',
-          marginBottom: '24px',
-        }}
-      >
-        <button
-          className="btn btn-sm"
+  return (
+    <div className="section-dark" style={{ minHeight: '85vh', paddingTop: '40px' }}>
+      <div className="container-editorial">
+        {/* Header */}
+        <div style={{ maxWidth: '840px', marginBottom: '36px' }}>
+          <span className="section-kicker">Platform Compliance & Risk</span>
+          <h1
+            style={{
+              fontSize: 'clamp(1.5rem, 3.8vw, 3.2rem)',
+              maxWidth: '100%',
+              overflowWrap: 'break-word',
+              wordBreak: 'break-word',
+              fontWeight: 900,
+              letterSpacing: '-0.035em',
+              color: '#FFFFFF',
+              marginBottom: '12px',
+            }}
+          >
+            Administrator Governance Center.
+          </h1>
+          <p style={{ color: 'var(--text-dark-secondary)', fontSize: '1.02rem', lineHeight: 1.6 }}>
+            Review pending API submissions, verify double-entry system solvency, tune marketplace take-rates, and inspect tamper-evident audit trails.
+          </p>
+        </div>
+
+        {/* Tab Switcher */}
+        <div
           style={{
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'moderation' ? '2px solid var(--accent-rose)' : '2px solid transparent',
-            color: activeTab === 'moderation' ? 'var(--text-primary)' : 'var(--text-muted)',
-            fontWeight: 600,
-            borderRadius: 0,
-            paddingBottom: '10px',
+            display: 'flex',
+            gap: '8px',
+            borderBottom: '1px solid var(--border-dark)',
+            marginBottom: '32px',
+            overflowX: 'auto',
           }}
-          onClick={() => setActiveTab('moderation')}
         >
-          Moderation Queue ({pendingTools.length})
-        </button>
+          <button
+            className="btn btn-sm"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              borderBottom: activeTab === 'moderation' ? '2px solid var(--brand-orange)' : '2px solid transparent',
+              color: activeTab === 'moderation' ? '#FFFFFF' : 'var(--text-dark-muted)',
+              fontWeight: activeTab === 'moderation' ? 800 : 600,
+              borderRadius: 0,
+              padding: '12px 18px',
+              fontSize: '0.9rem',
+            }}
+            onClick={() => setActiveTab('moderation')}
+          >
+            Moderation Queue ({pendingTools.length})
+          </button>
 
-        <button
-          className="btn btn-sm"
-          style={{
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'reconciliation' ? '2px solid var(--accent-rose)' : '2px solid transparent',
-            color: activeTab === 'reconciliation' ? 'var(--text-primary)' : 'var(--text-muted)',
-            fontWeight: 600,
-            borderRadius: 0,
-            paddingBottom: '10px',
-          }}
-          onClick={() => setActiveTab('reconciliation')}
-        >
-          <Scale size={15} />
-          Financial Reconciliation
-        </button>
+          <button
+            className="btn btn-sm"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              borderBottom: activeTab === 'reconciliation' ? '2px solid var(--brand-orange)' : '2px solid transparent',
+              color: activeTab === 'reconciliation' ? '#FFFFFF' : 'var(--text-dark-muted)',
+              fontWeight: activeTab === 'reconciliation' ? 800 : 600,
+              borderRadius: 0,
+              padding: '12px 18px',
+              fontSize: '0.9rem',
+            }}
+            onClick={() => setActiveTab('reconciliation')}
+          >
+            <Scale size={15} />
+            Double-Entry Solvency
+          </button>
 
-        <button
-          className="btn btn-sm"
-          style={{
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'commission' ? '2px solid var(--accent-rose)' : '2px solid transparent',
-            color: activeTab === 'commission' ? 'var(--text-primary)' : 'var(--text-muted)',
-            fontWeight: 600,
-            borderRadius: 0,
-            paddingBottom: '10px',
-          }}
-          onClick={() => setActiveTab('commission')}
-        >
-          <Percent size={15} />
-          Platform Commission (BPS)
-        </button>
+          <button
+            className="btn btn-sm"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              borderBottom: activeTab === 'commission' ? '2px solid var(--brand-orange)' : '2px solid transparent',
+              color: activeTab === 'commission' ? '#FFFFFF' : 'var(--text-dark-muted)',
+              fontWeight: activeTab === 'commission' ? 800 : 600,
+              borderRadius: 0,
+              padding: '12px 18px',
+              fontSize: '0.9rem',
+            }}
+            onClick={() => setActiveTab('commission')}
+          >
+            <Percent size={15} />
+            Platform Take-Rate (BPS)
+          </button>
 
-        <button
-          className="btn btn-sm"
-          style={{
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'audit' ? '2px solid var(--accent-rose)' : '2px solid transparent',
-            color: activeTab === 'audit' ? 'var(--text-primary)' : 'var(--text-muted)',
-            fontWeight: 600,
-            borderRadius: 0,
-            paddingBottom: '10px',
-          }}
-          onClick={() => setActiveTab('audit')}
-        >
-          <Activity size={15} />
-          System Audit Trail ({auditLogs.length})
-        </button>
-      </div>
+          <button
+            className="btn btn-sm"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              borderBottom: activeTab === 'audit' ? '2px solid var(--brand-orange)' : '2px solid transparent',
+              color: activeTab === 'audit' ? '#FFFFFF' : 'var(--text-dark-muted)',
+              fontWeight: activeTab === 'audit' ? 800 : 600,
+              borderRadius: 0,
+              padding: '12px 18px',
+              fontSize: '0.9rem',
+            }}
+            onClick={() => setActiveTab('audit')}
+          >
+            <Activity size={15} />
+            Audit Trail ({auditLogs.length})
+          </button>
+        </div>
 
-      {activeTab === 'moderation' && (
-        <div className="glass-panel" style={{ padding: '24px' }}>
-          <h3 style={{ fontSize: '1.2rem', marginBottom: '16px' }}>Pending API Moderation Queue</h3>
+        {/* Tab 1: Moderation */}
+        {activeTab === 'moderation' && (
+          <div className="card-dark" style={{ padding: '28px' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#FFFFFF', marginBottom: '18px' }}>
+              Pending API Moderation Queue
+            </h3>
 
-          {pendingTools.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
-              <CheckCircle size={36} color="var(--accent-emerald)" style={{ margin: '0 auto 10px' }} />
-              <div>No tools currently pending review. Moderation queue is clear!</div>
+            {pendingTools.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '56px 0', color: 'var(--text-dark-muted)' }}>
+                <CheckCircle size={40} color="var(--status-emerald)" style={{ margin: '0 auto 14px' }} />
+                <div style={{ fontSize: '1rem', fontWeight: 700, color: '#FFFFFF' }}>All submissions reviewed!</div>
+                <div style={{ fontSize: '0.84rem', marginTop: '4px' }}>The creator tool moderation queue is currently clear.</div>
+              </div>
+            ) : (
+              <div className="data-table-container">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Tool Name & Slug</th>
+                      <th>Category</th>
+                      <th>Creator</th>
+                      <th>Price Per Call</th>
+                      <th>Verification Sandbox</th>
+                      <th style={{ textAlign: 'right' }}>Review Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pendingTools.map((tool) => (
+                      <tr key={tool.id}>
+                        <td>
+                          <div style={{ fontWeight: 700, color: '#FFFFFF' }}>{tool.name}</div>
+                          <div style={{ fontSize: '0.74rem', color: 'var(--brand-orange)', fontFamily: 'var(--font-mono)' }}>
+                            {tool.slug}
+                          </div>
+                        </td>
+                        <td>
+                          <span className="badge badge-dark-neutral">{tool.category}</span>
+                        </td>
+                        <td style={{ fontSize: '0.85rem' }}>{tool.creator?.name || 'Verified Creator'}</td>
+                        <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#FFFFFF' }}>
+                          {formatMicroUsd(tool.priceMicroUsd)}
+                        </td>
+                        <td>
+                          <span className="badge badge-emerald">Verified (Passed)</span>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div style={{ display: 'inline-flex', gap: '8px' }}>
+                            <button
+                              className="btn btn-sm"
+                              style={{
+                                background: 'var(--status-emerald-bg)',
+                                color: '#34D399',
+                                border: '1px solid var(--status-emerald-border)',
+                              }}
+                              onClick={() => {
+                                setSelectedTool(tool);
+                                setActionType('approve');
+                                setModerationReason('Meets platform standards and passed verification test call');
+                              }}
+                            >
+                              <CheckCircle size={13} />
+                              Approve
+                            </button>
+                            <button
+                              className="btn btn-sm"
+                              style={{
+                                background: 'var(--status-rose-bg)',
+                                color: '#F87171',
+                                border: '1px solid var(--status-rose-border)',
+                              }}
+                              onClick={() => {
+                                setSelectedTool(tool);
+                                setActionType('reject');
+                                setModerationReason('Does not meet platform guidelines or schema compliance requirements');
+                              }}
+                            >
+                              <XCircle size={13} />
+                              Reject
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab 2: Financial Reconciliation */}
+        {activeTab === 'reconciliation' && reconciliation && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div
+              className="card-dark"
+              style={{
+                padding: '28px',
+                border: reconciliation.isBalanced ? '1px solid var(--status-emerald-border)' : '1px solid var(--status-rose-border)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                {reconciliation.isBalanced ? (
+                  <CheckCircle size={26} color="var(--status-emerald)" />
+                ) : (
+                  <AlertTriangle size={26} color="var(--status-rose)" />
+                )}
+                <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#FFFFFF' }}>
+                  Platform Financial Solvency:{' '}
+                  <span style={{ color: reconciliation.isBalanced ? '#34D399' : '#F87171' }}>
+                    {reconciliation.isBalanced ? '100% BALANCED & RECONCILED' : 'DISCREPANCY DETECTED'}
+                  </span>
+                </h3>
+              </div>
+              <p style={{ fontSize: '0.9rem', color: 'var(--text-dark-secondary)', lineHeight: 1.6 }}>
+                Total External & Seed Deposits exactly match Total Platform Liabilities (User Wallets + In-flight Mutex Reserves + Platform Revenue + Creator Payables).
+              </p>
             </div>
-          ) : (
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+              <div className="card-dark" style={{ padding: '22px' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-dark-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                  Total Deposited
+                </div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#38BDF8', fontFamily: 'var(--font-mono)', marginTop: '4px' }}>
+                  {formatMicroUsd(reconciliation.totalDeposited)}
+                </div>
+              </div>
+
+              <div className="card-dark" style={{ padding: '22px' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-dark-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                  Consumer Wallets Total
+                </div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#34D399', fontFamily: 'var(--font-mono)', marginTop: '4px' }}>
+                  {formatMicroUsd(reconciliation.totalWalletsBalance)}
+                </div>
+              </div>
+
+              <div className="card-dark" style={{ padding: '22px' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-dark-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                  Platform Net Revenue
+                </div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--brand-orange)', fontFamily: 'var(--font-mono)', marginTop: '4px' }}>
+                  {formatMicroUsd(reconciliation.totalPlatformRevenue)}
+                </div>
+              </div>
+
+              <div className="card-dark" style={{ padding: '22px' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-dark-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                  Solvency Variance
+                </div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#34D399', fontFamily: 'var(--font-mono)', marginTop: '4px' }}>
+                  {formatMicroUsd(reconciliation.discrepancyMicroUsd || 0)}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 3: Commission Settings */}
+        {activeTab === 'commission' && (
+          <div className="card-dark" style={{ padding: '32px', maxWidth: '640px' }}>
+            <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#FFFFFF', marginBottom: '8px' }}>
+              Platform Commission Take-Rate (Basis Points)
+            </h3>
+            <p style={{ fontSize: '0.88rem', color: 'var(--text-dark-secondary)', marginBottom: '24px', lineHeight: 1.6 }}>
+              Configure the platform fee captured on every executed tool call. 1,000 basis points equals exactly 10.00%.
+            </p>
+
+            <form onSubmit={handleUpdateCommission}>
+              <div className="form-group">
+                <label className="form-label">Commission Rate in BPS (0 - 5000)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="5000"
+                  step="50"
+                  className="form-input"
+                  value={commissionBps}
+                  onChange={(e) => setCommissionBps(parseInt(e.target.value, 10))}
+                />
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-dark-muted)' }}>
+                  Active platform fee: <strong style={{ color: 'var(--brand-orange)' }}>{(commissionBps / 100).toFixed(2)}%</strong>
+                </span>
+              </div>
+
+              {commissionSuccess && (
+                <div style={{ padding: '12px 16px', background: 'var(--status-emerald-bg)', color: '#34D399', border: '1px solid var(--status-emerald-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem', marginBottom: '18px' }}>
+                  {commissionSuccess}
+                </div>
+              )}
+
+              <button type="submit" className="btn btn-primary">
+                Save Platform Commission
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* Tab 4: Audit Logs */}
+        {activeTab === 'audit' && (
+          <div className="card-dark" style={{ padding: '28px' }}>
+            <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#FFFFFF', marginBottom: '18px' }}>
+              System Audit Trail & Security Events
+            </h3>
+
             <div className="data-table-container">
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Tool Name & Slug</th>
-                    <th>Category</th>
-                    <th>Creator</th>
-                    <th>Price Per Call</th>
-                    <th>Test Calls</th>
-                    <th>Actions</th>
+                    <th>Timestamp</th>
+                    <th>Action</th>
+                    <th>Resource Type</th>
+                    <th>Resource ID</th>
+                    <th>Origin IP</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {pendingTools.map((tool) => (
-                    <tr key={tool.id}>
+                  {auditLogs.map((log) => (
+                    <tr key={log.id}>
+                      <td style={{ fontSize: '0.8rem', color: 'var(--text-dark-muted)' }}>{formatDate(log.createdAt)}</td>
                       <td>
-                        <div style={{ fontWeight: 600 }}>{tool.name}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>
-                          {tool.slug}
-                        </div>
+                        <span className="badge badge-dark-neutral">{log.action}</span>
                       </td>
-                      <td>
-                        <span className="badge badge-cyan">{tool.category}</span>
+                      <td style={{ fontSize: '0.85rem' }}>{log.resourceType}</td>
+                      <td style={{ fontSize: '0.78rem', fontFamily: 'var(--font-mono)', color: 'var(--brand-orange)' }}>
+                        {log.resourceId}
                       </td>
-                      <td style={{ fontSize: '0.85rem' }}>{tool.creator?.name || 'Verified Creator'}</td>
-                      <td style={{ fontFamily: 'var(--font-mono)', color: '#38bdf8' }}>
-                        {formatMicroUsd(tool.priceMicroUsd)}
-                      </td>
-                      <td>
-                        <span className="badge badge-emerald">Verified (Passed)</span>
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          <button
-                            className="btn btn-success btn-sm"
-                            onClick={() => {
-                              setSelectedTool(tool);
-                              setActionType('approve');
-                              setModerationReason('Meets platform standards and passed verification test call');
-                            }}
-                          >
-                            <CheckCircle size={13} />
-                            Approve
-                          </button>
-                          <button
-                            className="btn btn-danger btn-sm"
-                            onClick={() => {
-                              setSelectedTool(tool);
-                              setActionType('reject');
-                              setModerationReason('Does not meet platform guidelines or schema compliance requirements');
-                            }}
-                          >
-                            <XCircle size={13} />
-                            Reject
-                          </button>
-                        </div>
-                      </td>
+                      <td style={{ fontSize: '0.8rem', color: 'var(--text-dark-muted)' }}>{log.ipAddress || '127.0.0.1'}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === 'reconciliation' && reconciliation && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div
-            className="glass-panel"
-            style={{
-              padding: '24px',
-              border: reconciliation.isBalanced ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(244, 63, 94, 0.4)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              {reconciliation.isBalanced ? (
-                <CheckCircle size={22} color="var(--accent-emerald)" />
-              ) : (
-                <AlertTriangle size={22} color="var(--accent-rose)" />
-              )}
-              <h3 style={{ fontSize: '1.25rem' }}>
-                System Financial Balance Status:{' '}
-                <span style={{ color: reconciliation.isBalanced ? '#34d399' : '#fb7185' }}>
-                  {reconciliation.isBalanced ? 'BALANCED & AUDIT VERIFIED' : 'DISCREPANCY DETECTED'}
-                </span>
-              </h3>
-            </div>
-            <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
-              Total External & Seed Deposits match Total System Liabilities (Wallets + In-flight Reserved + Platform Revenue + Creator Payables).
-            </p>
           </div>
+        )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
-            <div className="glass-panel" style={{ padding: '20px' }}>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Total Deposited</div>
-              <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>
-                {formatMicroUsd(reconciliation.totalDeposited)}
-              </div>
-            </div>
-
-            <div className="glass-panel" style={{ padding: '20px' }}>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>User Wallets Balance</div>
-              <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#34d399', fontFamily: 'var(--font-mono)' }}>
-                {formatMicroUsd(reconciliation.totalWalletsBalance)}
-              </div>
-            </div>
-
-            <div className="glass-panel" style={{ padding: '20px' }}>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Platform Revenue</div>
-              <div style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--accent-amber)', fontFamily: 'var(--font-mono)' }}>
-                {formatMicroUsd(reconciliation.totalPlatformRevenue)}
-              </div>
-            </div>
-
-            <div className="glass-panel" style={{ padding: '20px' }}>
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Discrepancy</div>
-              <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#34d399', fontFamily: 'var(--font-mono)' }}>
-                {formatMicroUsd(reconciliation.discrepancyMicroUsd || 0)}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'commission' && (
-        <div className="glass-panel" style={{ padding: '28px', maxWidth: '600px' }}>
-          <h3 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>Platform Commission Fee (BPS)</h3>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '20px' }}>
-            Configure the basis points (BPS) collected by the marketplace on every paid tool call. 1,000 BPS equals 10.00%.
-          </p>
-
-          <form onSubmit={handleUpdateCommission}>
-            <div className="form-group">
-              <label className="form-label">Commission Basis Points (0 - 5000 BPS)</label>
-              <input
-                type="number"
-                min="0"
-                max="5000"
-                step="50"
-                className="form-input"
-                value={commissionBps}
-                onChange={(e) => setCommissionBps(parseInt(e.target.value, 10))}
-              />
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                Current effective fee: <strong>{(commissionBps / 100).toFixed(2)}%</strong>
-              </span>
-            </div>
-
-            {commissionSuccess && (
-              <div style={{ padding: '10px', background: 'rgba(16,185,129,0.1)', color: '#34d399', borderRadius: '4px', fontSize: '0.85rem', marginBottom: '14px' }}>
-                {commissionSuccess}
-              </div>
-            )}
-
-            <button type="submit" className="btn btn-primary">
-              Update Platform Commission
-            </button>
-          </form>
-        </div>
-      )}
-
-      {activeTab === 'audit' && (
-        <div className="glass-panel" style={{ padding: '24px' }}>
-          <h3 style={{ fontSize: '1.2rem', marginBottom: '16px' }}>System Audit Trail</h3>
-
-          <div className="data-table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Timestamp</th>
-                  <th>Action</th>
-                  <th>Resource Type</th>
-                  <th>Resource ID</th>
-                  <th>IP Address</th>
-                </tr>
-              </thead>
-              <tbody>
-                {auditLogs.map((log) => (
-                  <tr key={log.id}>
-                    <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{formatDate(log.createdAt)}</td>
-                    <td>
-                      <span className="badge badge-cyan">{log.action}</span>
-                    </td>
-                    <td style={{ fontSize: '0.82rem' }}>{log.resourceType}</td>
-                    <td style={{ fontSize: '0.78rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
-                      {log.resourceId}
-                    </td>
-                    <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{log.ipAddress || '127.0.0.1'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Moderation Action Modal */}
-      {selectedTool && (
-        <div className="modal-overlay" onClick={() => setSelectedTool(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
-            <div className="modal-header">
-              <h3 style={{ fontSize: '1.15rem' }}>
-                Confirm {actionType.toUpperCase()}: {selectedTool.name}
-              </h3>
-              <button
-                onClick={() => setSelectedTool(null)}
-                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <form onSubmit={handleModerationSubmit}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label className="form-label">Review Decision Reason</label>
-                  <textarea
-                    className="form-textarea"
-                    rows={3}
-                    required
-                    value={moderationReason}
-                    onChange={(e) => setModerationReason(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setSelectedTool(null)}>
-                  Cancel
-                </button>
+        {/* Moderation Action Modal */}
+        {selectedTool && (
+          <div className="modal-overlay" onClick={() => setSelectedTool(null)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+              <div className="modal-header">
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#FFFFFF' }}>
+                  Confirm {actionType.toUpperCase()}: {selectedTool.name}
+                </h3>
                 <button
-                  type="submit"
-                  className={actionType === 'approve' ? 'btn btn-success' : 'btn btn-danger'}
+                  onClick={() => setSelectedTool(null)}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-dark-muted)', cursor: 'pointer' }}
                 >
-                  Confirm {actionType.toUpperCase()}
+                  <X size={20} />
                 </button>
               </div>
-            </form>
+              <form onSubmit={handleModerationSubmit}>
+                <div className="modal-body">
+                  <div className="form-group">
+                    <label className="form-label">Review Rationale / Notes</label>
+                    <textarea
+                      className="form-textarea"
+                      rows={3}
+                      required
+                      value={moderationReason}
+                      onChange={(e) => setModerationReason(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-secondary" onClick={() => setSelectedTool(null)}>
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className={actionType === 'approve' ? 'btn btn-primary' : 'btn btn-secondary'}
+                    style={actionType === 'reject' ? { background: 'var(--status-rose-bg)', color: '#F87171', borderColor: 'var(--status-rose-border)' } : {}}
+                  >
+                    Confirm {actionType.toUpperCase()}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

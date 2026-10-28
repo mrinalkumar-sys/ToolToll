@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { formatMicroUsd } from '../../utils/formatters';
+import { RoleSelector } from './RoleSelector';
 import {
   Sparkles,
   Bot,
@@ -11,7 +12,10 @@ import {
   Brain,
   LogIn,
   LogOut,
-  PlusCircle,
+  Plus,
+  Menu,
+  X,
+  ChevronRight,
 } from 'lucide-react';
 
 export type NavTab =
@@ -37,6 +41,40 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenTopup,
 }) => {
   const { user, wallet, isAuthenticated, logout, activeRole, setActiveRole } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      await logout();
+      onSelectTab('marketplace');
+      setMobileMenuOpen(false);
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
+  const handleTabClick = (tab: NavTab) => {
+    onSelectTab(tab);
+    setMobileMenuOpen(false);
+  };
+
+  const navItems: { id: NavTab; label: string; icon: React.FC<{ size?: number }> }[] = [
+    { id: 'marketplace', label: 'Marketplace', icon: Store },
+    { id: 'playground', label: 'Playground', icon: Bot },
+    { id: 'agents', label: 'My Agents', icon: Bot },
+    { id: 'creator', label: 'Creator Studio', icon: Hammer },
+    { id: 'wallet', label: 'Wallet', icon: Wallet },
+    { id: 'ai', label: 'AI Service', icon: Brain },
+  ];
+
+  if (user?.isAdmin) {
+    navItems.push({ id: 'admin', label: 'Admin', icon: Shield });
+  }
 
   return (
     <header
@@ -44,26 +82,26 @@ export const Navbar: React.FC<NavbarProps> = ({
         position: 'sticky',
         top: 0,
         zIndex: 100,
-        backgroundColor: 'rgba(6, 9, 19, 0.85)',
+        backgroundColor: 'rgba(9, 10, 14, 0.92)',
         backdropFilter: 'blur(20px)',
-        borderBottom: '1px solid var(--border-subtle)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderBottom: '1px solid var(--border-dark)',
+        transition: 'all 0.2s ease',
       }}
     >
       <div
+        className="container-editorial"
         style={{
-          maxWidth: '1440px',
-          margin: '0 auto',
-          padding: '0 24px',
-          height: '70px',
+          height: '74px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: '20px',
+          gap: '24px',
         }}
       >
-        {/* Brand Logo */}
+        {/* Brand Logo - Inspired by Editorial Wordmarks */}
         <div
-          onClick={() => onSelectTab('marketplace')}
+          onClick={() => handleTabClick('marketplace')}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -74,224 +112,308 @@ export const Navbar: React.FC<NavbarProps> = ({
         >
           <div
             style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: '10px',
-              background: 'linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-purple) 100%)',
+              width: '36px',
+              height: '36px',
+              borderRadius: 'var(--radius-xs)',
+              background: 'var(--brand-orange)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: 'var(--shadow-glow)',
+              boxShadow: 'var(--shadow-orange)',
+              transition: 'transform 0.2s ease',
             }}
           >
-            <Sparkles size={20} color="#050a17" strokeWidth={2.5} />
+            <Sparkles size={19} color="#FFFFFF" strokeWidth={2.5} />
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span
                 style={{
                   fontFamily: 'var(--font-display)',
-                  fontWeight: 800,
-                  fontSize: '1.25rem',
-                  letterSpacing: '-0.02em',
-                  background: 'linear-gradient(to right, #ffffff, #94a3b8)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
+                  fontWeight: 900,
+                  fontSize: '1.35rem',
+                  letterSpacing: '-0.04em',
+                  color: '#FFFFFF',
+                  textTransform: 'uppercase',
                 }}
               >
-                ToolToll
+                TOOLTOLL
               </span>
-              <span className="badge badge-cyan" style={{ fontSize: '0.62rem', padding: '2px 6px' }}>
-                MVP
+              <span
+                className="badge badge-orange"
+                style={{ fontSize: '0.62rem', padding: '1px 6px', fontWeight: 800 }}
+              >
+                PRO
               </span>
             </div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-              API Marketplace for AI Agents
+            <div
+              className="brand-subtitle"
+              style={{
+                fontSize: '0.66rem',
+                color: 'var(--text-dark-muted)',
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                fontWeight: 600,
+              }}
+            >
+              Machine Economy Gateway
             </div>
           </div>
         </div>
 
-        {/* Navigation Tabs */}
+        {/* Desktop Navigation Tabs */}
         <nav
+          style={{
+            display: 'none',
+            alignItems: 'center',
+            gap: '2px',
+            background: 'rgba(255, 255, 255, 0.03)',
+            padding: '4px',
+            borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--border-dark)',
+          }}
+          className="desktop-nav"
+        >
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = currentTab === item.id;
+            return (
+              <button
+                key={item.id}
+                className="btn btn-sm"
+                style={{
+                  background: isActive ? 'rgba(255, 255, 255, 0.09)' : 'transparent',
+                  color: isActive ? '#FFFFFF' : 'var(--text-dark-secondary)',
+                  border: isActive ? '1px solid var(--border-dark-hover)' : '1px solid transparent',
+                  fontWeight: isActive ? 700 : 500,
+                  position: 'relative',
+                }}
+                onClick={() => handleTabClick(item.id)}
+              >
+                <Icon size={14} />
+                {item.label}
+                {isActive && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      bottom: '-5px',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      width: '16px',
+                      height: '2px',
+                      backgroundColor: 'var(--brand-orange)',
+                      borderRadius: '2px',
+                    }}
+                  />
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Right Section: Wallet, Role & Auth Actions */}
+        <div
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '4px',
-            background: 'rgba(255, 255, 255, 0.03)',
-            padding: '4px',
-            borderRadius: 'var(--radius-lg)',
-            border: '1px solid var(--border-subtle)',
+            gap: '10px',
+            flexShrink: 0,
+            marginLeft: 'auto',
           }}
         >
-          <button
-            className="btn btn-sm"
-            style={{
-              background: currentTab === 'marketplace' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-              color: currentTab === 'marketplace' ? 'var(--text-primary)' : 'var(--text-secondary)',
-              border: 'none',
-            }}
-            onClick={() => onSelectTab('marketplace')}
-          >
-            <Store size={15} />
-            Marketplace
-          </button>
-
-          <button
-            className="btn btn-sm"
-            style={{
-              background: currentTab === 'playground' ? 'var(--accent-purple-glow)' : 'transparent',
-              color: currentTab === 'playground' ? 'var(--accent-purple-light)' : 'var(--text-secondary)',
-              border: currentTab === 'playground' ? '1px solid rgba(139, 92, 246, 0.3)' : '1px solid transparent',
-            }}
-            onClick={() => onSelectTab('playground')}
-          >
-            <Bot size={15} />
-            Playground
-          </button>
-
-          <button
-            className="btn btn-sm"
-            style={{
-              background: currentTab === 'agents' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-              color: currentTab === 'agents' ? 'var(--text-primary)' : 'var(--text-secondary)',
-              border: 'none',
-            }}
-            onClick={() => onSelectTab('agents')}
-          >
-            <Bot size={15} />
-            My Agents
-          </button>
-
-          <button
-            className="btn btn-sm"
-            style={{
-              background: currentTab === 'creator' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-              color: currentTab === 'creator' ? 'var(--text-primary)' : 'var(--text-secondary)',
-              border: 'none',
-            }}
-            onClick={() => onSelectTab('creator')}
-          >
-            <Hammer size={15} />
-            Creator Studio
-          </button>
-
-          <button
-            className="btn btn-sm"
-            style={{
-              background: currentTab === 'wallet' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-              color: currentTab === 'wallet' ? 'var(--text-primary)' : 'var(--text-secondary)',
-              border: 'none',
-            }}
-            onClick={() => onSelectTab('wallet')}
-          >
-            <Wallet size={15} />
-            Wallet
-          </button>
-
-          {user?.isAdmin && (
-            <button
-              className="btn btn-sm"
-              style={{
-                background: currentTab === 'admin' ? 'rgba(244, 63, 94, 0.15)' : 'transparent',
-                color: currentTab === 'admin' ? '#fb7185' : 'var(--text-secondary)',
-                border: currentTab === 'admin' ? '1px solid rgba(244, 63, 94, 0.3)' : '1px solid transparent',
-              }}
-              onClick={() => onSelectTab('admin')}
-            >
-              <Shield size={15} />
-              Admin
-            </button>
-          )}
-
-          <button
-            className="btn btn-sm"
-            style={{
-              background: currentTab === 'ai' ? 'var(--accent-cyan-glow)' : 'transparent',
-              color: currentTab === 'ai' ? 'var(--accent-cyan-light)' : 'var(--text-secondary)',
-              border: currentTab === 'ai' ? '1px solid var(--border-accent)' : '1px solid transparent',
-            }}
-            onClick={() => onSelectTab('ai')}
-          >
-            <Brain size={15} />
-            AI Service
-          </button>
-        </nav>
-
-        {/* Right Actions: Wallet & User */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           {isAuthenticated ? (
             <>
-              {/* Wallet Pill */}
+              {/* Wallet Pill - Monospace Micro-USD with Emerald Indicator */}
               <div
+                className="desktop-wallet-pill"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  background: 'rgba(16, 185, 129, 0.08)',
-                  border: '1px solid rgba(16, 185, 129, 0.25)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: '4px 6px 4px 12px',
-                  gap: '10px',
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid var(--border-dark)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '4px 6px 4px 10px',
+                  gap: '8px',
+                  flexShrink: 0,
                 }}
               >
                 <div>
-                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                    Balance
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      fontSize: '0.62rem',
+                      color: 'var(--text-dark-muted)',
+                      textTransform: 'uppercase',
+                      fontWeight: 700,
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: '6px',
+                        height: '6px',
+                        borderRadius: '50%',
+                        backgroundColor: 'var(--status-emerald)',
+                        boxShadow: '0 0 8px rgba(16, 185, 129, 0.6)',
+                      }}
+                    />
+                    Micro Balance
                   </div>
-                  <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#34d399', fontFamily: 'var(--font-mono)' }}>
+                  <div
+                    style={{
+                      fontWeight: 800,
+                      fontSize: '0.88rem',
+                      color: '#FFFFFF',
+                      fontFamily: 'var(--font-mono)',
+                    }}
+                  >
                     {formatMicroUsd(wallet?.balance)}
                   </div>
                 </div>
+
                 <button
-                  className="btn btn-success btn-sm"
-                  style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+                  className="btn btn-primary btn-sm"
+                  style={{
+                    padding: '4px 8px',
+                    fontSize: '0.72rem',
+                    borderRadius: 'var(--radius-xs)',
+                  }}
                   onClick={onOpenTopup}
-                  title="Add funds to wallet"
+                  title="Add Micro-USD to wallet"
                 >
-                  <PlusCircle size={14} />
-                  Top-up
+                  <Plus size={12} strokeWidth={3} />
+                  Top Up
                 </button>
               </div>
 
-              {/* Role Badge Switcher */}
-              <select
-                className="form-select"
-                style={{
-                  padding: '6px 10px',
-                  fontSize: '0.8rem',
-                  width: 'auto',
-                  background: 'rgba(255, 255, 255, 0.04)',
-                }}
-                value={activeRole}
-                onChange={(e) => setActiveRole(e.target.value as any)}
-              >
-                <option value="consumer">Role: Consumer</option>
-                <option value="creator">Role: Creator</option>
-                {user?.isAdmin && <option value="admin">Role: Admin</option>}
-              </select>
-
-              {/* User Dropdown / Logout */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '0.82rem', fontWeight: 600 }}>{user?.name}</div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{user?.email}</div>
-                </div>
-                <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={logout}
-                  title="Sign out"
-                >
-                  <LogOut size={15} />
-                </button>
+              {/* Custom Dark Navy Role Selector Dropdown with Integrated Logout Option */}
+              <div className="role-selector-wrapper" style={{ flexShrink: 0 }}>
+                <RoleSelector
+                  activeRole={activeRole}
+                  onSelectRole={(newRole) => {
+                    setActiveRole(newRole);
+                    if (newRole === 'creator') onSelectTab('creator');
+                    else if (newRole === 'admin') onSelectTab('admin');
+                    else onSelectTab('marketplace');
+                  }}
+                  isAdmin={Boolean(user?.isAdmin)}
+                  onLogout={handleLogout}
+                  isLoggingOut={isLoggingOut}
+                />
               </div>
             </>
           ) : (
-            <button className="btn btn-primary btn-sm" onClick={onOpenAuth}>
+            <button
+              className="btn btn-primary btn-sm"
+              style={{ fontWeight: 700, padding: '9px 18px', flexShrink: 0 }}
+              onClick={onOpenAuth}
+            >
               <LogIn size={15} />
               Sign In / Demo
             </button>
           )}
+
+          {/* Mobile Menu Hamburger */}
+          <button
+            className="btn btn-secondary btn-sm mobile-menu-btn"
+            style={{ padding: '8px', flexShrink: 0 }}
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle navigation menu"
+          >
+            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
         </div>
       </div>
+
+      {/* Mobile Navigation Dropdown */}
+      {mobileMenuOpen && (
+        <div
+          style={{
+            borderTop: '1px solid var(--border-dark)',
+            backgroundColor: 'var(--bg-dark-surface)',
+            padding: '16px 24px 24px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+          }}
+        >
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = currentTab === item.id;
+            return (
+              <button
+                key={item.id}
+                className="btn"
+                style={{
+                  justifyContent: 'space-between',
+                  background: isActive ? 'var(--brand-orange-subtle)' : 'transparent',
+                  color: isActive ? 'var(--brand-orange)' : 'var(--text-dark-primary)',
+                  border: isActive ? '1px solid var(--brand-orange-border)' : '1px solid transparent',
+                  padding: '12px 16px',
+                  borderRadius: 'var(--radius-sm)',
+                }}
+                onClick={() => handleTabClick(item.id)}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Icon size={18} />
+                  <span>{item.label}</span>
+                </div>
+                <ChevronRight size={16} />
+              </button>
+            );
+          })}
+
+          {isAuthenticated && (
+            <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border-dark)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
+                <div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#FFFFFF' }}>{user?.name}</div>
+                </div>
+                <span className="badge badge-orange">{activeRole.toUpperCase()}</span>
+              </div>
+
+              <div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-dark-muted)', marginBottom: '6px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Active Role
+                </div>
+                <RoleSelector
+                  activeRole={activeRole}
+                  onSelectRole={(newRole) => {
+                    setActiveRole(newRole);
+                    if (newRole === 'creator') onSelectTab('creator');
+                    else if (newRole === 'admin') onSelectTab('admin');
+                    else onSelectTab('marketplace');
+                    setMobileMenuOpen(false);
+                  }}
+                  isAdmin={Boolean(user?.isAdmin)}
+                  onLogout={handleLogout}
+                  isLoggingOut={isLoggingOut}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Inline styles for media query handling */}
+      <style>{`
+        @media (min-width: 1100px) {
+          .desktop-nav { display: flex !important; }
+          .mobile-menu-btn { display: none !important; }
+        }
+        @media (max-width: 1099px) {
+          .desktop-nav { display: none !important; }
+          .mobile-menu-btn { display: inline-flex !important; }
+        }
+        @media (max-width: 600px) {
+          .desktop-wallet-pill { display: none !important; }
+        }
+        .btn-logout-prominent {
+          display: inline-flex !important;
+        }
+      `}</style>
     </header>
   );
 };

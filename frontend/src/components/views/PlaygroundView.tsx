@@ -8,19 +8,28 @@ import {
   Bot,
   Play,
   Sparkles,
-  ArrowRight,
   ShieldCheck,
   CheckCircle,
-  AlertTriangle,
   RotateCw,
+  Cpu,
+  Layers,
+  ArrowRight,
+  Zap,
 } from 'lucide-react';
+import { Tool } from '../../types';
 
-export const PlaygroundView: React.FC = () => {
-  const { wallet, refreshWallet, isAuthenticated } = useAuth();
+interface PlaygroundViewProps {
+  initialTool?: Tool | null;
+}
+
+export const PlaygroundView: React.FC<PlaygroundViewProps> = ({ initialTool }) => {
+  const { wallet, refreshWallet, isAuthenticated, loginDemo } = useAuth();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
   const [taskPrompt, setTaskPrompt] = useState<string>(
-    'Translate this customer message to French, check if it contains scam risk, and analyze its sentiment: "URGENT: Your account requires immediate verification to avoid suspension. Click here now."'
+    initialTool
+      ? `Execute workflow with ${initialTool.name} (${initialTool.slug}): Process sample input and verify gateway output.`
+      : 'Translate this customer message to French, check if it contains scam risk, and analyze its sentiment: "URGENT: Your account requires immediate verification to avoid suspension. Click here now."'
   );
 
   const [planning, setPlanning] = useState<boolean>(false);
@@ -44,7 +53,7 @@ export const PlaygroundView: React.FC = () => {
 
   const presetTasks = [
     {
-      title: 'Multilingual Scam & Sentiment Pipeline',
+      title: 'Multilingual Scam & Sentiment',
       prompt: 'Translate this customer message to French, check if it contains scam risk, and analyze its sentiment: "URGENT: Your account requires immediate verification to avoid suspension. Click here now."',
     },
     {
@@ -52,7 +61,7 @@ export const PlaygroundView: React.FC = () => {
       prompt: 'Analyze this incoming SMS message for phishing and scam likelihood: "Congratulations! You won a $1,000 Walmart gift card. Text YES to claim."',
     },
     {
-      title: 'Customer Feedback Translation & Sentiment',
+      title: 'Customer Feedback Sentiment',
       prompt: 'Translate to Spanish and evaluate customer satisfaction sentiment: "The customer service representative resolved my invoice issue in minutes. Truly fantastic experience!"',
     },
   ];
@@ -81,6 +90,9 @@ export const PlaygroundView: React.FC = () => {
     setExecutionError(null);
 
     try {
+      if (!isAuthenticated) {
+        await loginDemo('consumer');
+      }
       const res = await api.executeAgentPlan(
         plan.task,
         plan.steps,
@@ -96,312 +108,361 @@ export const PlaygroundView: React.FC = () => {
   };
 
   return (
-    <div>
-      {/* Header */}
-      <div style={{ marginBottom: '28px' }}>
-        <div className="badge badge-purple" style={{ marginBottom: '8px' }}>
-          <Sparkles size={13} />
-          Autonomous Orchestrator
+    <div className="section-dark" style={{ minHeight: '85vh', paddingTop: '40px' }}>
+      <div className="container-editorial">
+        {/* Header */}
+        <div style={{ maxWidth: '840px', marginBottom: '36px' }}>
+          <span className="section-kicker">Agent Orchestration Console</span>
+          <h1
+            style={{
+              fontSize: 'clamp(1.5rem, 3.8vw, 3.2rem)',
+              maxWidth: '100%',
+              overflowWrap: 'break-word',
+              wordBreak: 'break-word',
+              fontWeight: 900,
+              letterSpacing: '-0.035em',
+              color: '#FFFFFF',
+              marginBottom: '14px',
+            }}
+          >
+            Autonomous Agent Playground.
+          </h1>
+          <p style={{ color: 'var(--text-dark-secondary)', fontSize: '1.05rem', lineHeight: 1.6 }}>
+            Submit natural language requests. The ToolToll orchestrator discovers verified marketplace tools, computes upfront micro-USD budgets, and executes calls under atomic financial constraints.
+          </p>
         </div>
-        <h1 style={{ fontSize: '2.2rem', marginBottom: '8px' }}>Autonomous Agent Playground</h1>
-        <p style={{ color: 'var(--text-secondary)', maxWidth: '780px' }}>
-          Submit high-level natural language tasks. The system selects and ranks verified marketplace APIs, models the data pipeline, calculates upfront micro-USD budgets, and executes calls through the secure gateway.
-        </p>
-      </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '24px' }}>
-        {/* Left Column: Task Input, Plan, and Execution Timeline */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          {/* Task Input Card */}
-          <div className="glass-panel" style={{ padding: '24px' }}>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Bot size={18} color="var(--accent-purple-light)" />
-              Natural Language Task Prompt
-            </h3>
-
-            {/* Quick Presets */}
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '14px' }}>
-              {presetTasks.map((preset, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  className="btn btn-sm btn-secondary"
-                  style={{ fontSize: '0.75rem', padding: '4px 10px' }}
-                  onClick={() => setTaskPrompt(preset.prompt)}
-                >
-                  ⚡ {preset.title}
-                </button>
-              ))}
-            </div>
-
-            <textarea
-              className="form-textarea"
-              rows={4}
-              value={taskPrompt}
-              onChange={(e) => setTaskPrompt(e.target.value)}
-              placeholder="Describe your multi-step task in plain English..."
-              style={{ fontSize: '0.95rem', marginBottom: '16px' }}
-            />
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                Powered by AI Discovery & Verification Engine
-              </div>
-              <button
-                className="btn btn-purple"
-                disabled={planning || !taskPrompt.trim()}
-                onClick={handleGeneratePlan}
-              >
-                <Sparkles size={16} />
-                {planning ? 'Analyzing & Planning...' : 'Generate Execution Plan'}
-              </button>
-            </div>
-
-            {planError && (
-              <div
-                style={{
-                  marginTop: '16px',
-                  padding: '12px 16px',
-                  borderRadius: 'var(--radius-sm)',
-                  background: 'rgba(244, 63, 94, 0.1)',
-                  border: '1px solid rgba(244, 63, 94, 0.3)',
-                  color: '#fb7185',
-                  fontSize: '0.88rem',
-                }}
-              >
-                {planError}
-              </div>
-            )}
-          </div>
-
-          {/* Generated Plan Breakdown */}
-          {plan && (
-            <div
-              className="glass-panel glow-cyan"
-              style={{
-                padding: '24px',
-                border: '1px solid var(--border-accent)',
-                animation: 'fadeIn 0.2s ease-out',
-              }}
-            >
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '28px' }}>
+          {/* Main Console Column */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', flex: '1 1 65%' }}>
+            {/* Task Prompt Card */}
+            <div className="card-dark" style={{ padding: '28px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <div>
-                  <div className="badge badge-cyan" style={{ marginBottom: '4px' }}>
-                    Plan Ready for Approval
-                  </div>
-                  <h3 style={{ fontSize: '1.2rem' }}>Execution Pipeline ({plan.steps?.length || 0} Steps)</h3>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>ESTIMATED COST</div>
-                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--accent-cyan-light)', fontFamily: 'var(--font-mono)' }}>
-                    {formatMicroUsd(plan.estimatedCostMicroUsd)}
-                  </div>
-                </div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Bot size={18} color="var(--brand-orange)" />
+                  Task Instruction Prompt
+                </h3>
+                <span className="badge badge-orange">NLP Intent Parser</span>
               </div>
 
-              {/* Steps timeline */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
-                {plan.steps?.map((step: any, idx: number) => (
-                  <div
+              {/* Presets */}
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                {presetTasks.map((preset, idx) => (
+                  <button
                     key={idx}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '14px',
-                      padding: '12px 16px',
-                      borderRadius: 'var(--radius-md)',
-                      background: 'rgba(255, 255, 255, 0.03)',
-                      border: '1px solid var(--border-subtle)',
-                    }}
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    style={{ fontSize: '0.76rem', padding: '5px 12px', borderRadius: 'var(--radius-xs)' }}
+                    onClick={() => setTaskPrompt(preset.prompt)}
                   >
-                    <div
-                      style={{
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: '50%',
-                        background: 'var(--accent-purple-glow)',
-                        color: 'var(--accent-purple-light)',
-                        border: '1px solid rgba(139, 92, 246, 0.4)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 700,
-                        fontSize: '0.85rem',
-                      }}
-                    >
-                      {step.step || idx + 1}
-                    </div>
-
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: '0.92rem' }}>
-                        {step.toolName || step.toolSlug}
-                      </div>
-                      <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                        {step.reason || 'Matched requirement capability'}
-                      </div>
-                    </div>
-
-                    <div style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: '#38bdf8' }}>
-                      {formatMicroUsd(step.priceMicroUsd)}
-                    </div>
-                  </div>
+                    ⚡ {preset.title}
+                  </button>
                 ))}
               </div>
 
-              {/* Approval & Execute Trigger */}
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  paddingTop: '16px',
-                  borderTop: '1px solid var(--border-subtle)',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                  <ShieldCheck size={16} color="var(--accent-emerald)" />
-                  <span>Funds will be atomically locked and released upon failure</span>
-                </div>
+              <textarea
+                className="form-textarea"
+                rows={4}
+                value={taskPrompt}
+                onChange={(e) => setTaskPrompt(e.target.value)}
+                placeholder="Describe your multi-step task in plain English..."
+                style={{ fontSize: '0.94rem', marginBottom: '18px' }}
+              />
 
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-dark-muted)' }}>
+                  Evaluated against live input schemas with zero sandbox leakage
+                </div>
                 <button
-                  className="btn btn-primary btn-lg"
-                  disabled={executing}
-                  onClick={handleExecutePlan}
+                  className="btn btn-primary"
+                  disabled={planning || !taskPrompt.trim()}
+                  onClick={handleGeneratePlan}
                 >
-                  {executing ? <RotateCw size={16} style={{ animation: 'spin 1s infinite linear' }} /> : <Play size={16} />}
-                  {executing ? 'Executing Pipeline...' : 'Approve & Execute Pipeline'}
+                  <Sparkles size={16} />
+                  {planning ? 'Synthesizing Pipeline...' : 'Generate Execution Plan'}
                 </button>
               </div>
 
-              {executionError && (
+              {planError && (
                 <div
                   style={{
                     marginTop: '16px',
-                    padding: '12px 16px',
+                    padding: '14px 18px',
                     borderRadius: 'var(--radius-sm)',
-                    background: 'rgba(244, 63, 94, 0.1)',
-                    border: '1px solid rgba(244, 63, 94, 0.3)',
-                    color: '#fb7185',
+                    background: 'var(--status-rose-bg)',
+                    border: '1px solid var(--status-rose-border)',
+                    color: '#F87171',
                     fontSize: '0.88rem',
                   }}
                 >
-                  {executionError}
+                  {planError}
                 </div>
               )}
             </div>
-          )}
 
-          {/* Live Execution Results Timeline */}
-          {executionResults && (
-            <div className="glass-panel" style={{ padding: '24px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '18px' }}>
-                <CheckCircle size={20} color="var(--accent-emerald)" />
-                <h3 style={{ fontSize: '1.2rem' }}>Execution Output & Quality Verifications</h3>
-              </div>
+            {/* Generated Plan Card */}
+            {plan && (
+              <div
+                className="card-dark highlight-orange"
+                style={{
+                  padding: '28px',
+                  border: '1px solid var(--brand-orange-border)',
+                  animation: 'fadeIn 0.22s ease-out',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                  <div>
+                    <span className="badge badge-orange" style={{ marginBottom: '6px' }}>
+                      Ready For Execution
+                    </span>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#FFFFFF' }}>
+                      Execution Pipeline ({plan.steps?.length || 0} Sequential Steps)
+                    </h3>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-dark-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                      ESTIMATED PIPELINE COST
+                    </div>
+                    <div style={{ fontSize: '1.3rem', fontWeight: 900, color: '#FFFFFF', fontFamily: 'var(--font-mono)' }}>
+                      {formatMicroUsd(plan.estimatedCostMicroUsd)}
+                    </div>
+                  </div>
+                </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {executionResults.map((res: any, idx: number) => (
-                  <div
-                    key={idx}
-                    style={{
-                      padding: '16px',
-                      borderRadius: 'var(--radius-md)',
-                      background: 'rgba(255, 255, 255, 0.02)',
-                      border: '1px solid var(--border-subtle)',
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span className="badge badge-emerald">STEP {res.step || idx + 1}</span>
-                        <strong style={{ fontSize: '0.95rem' }}>{res.toolName || `Step ${idx + 1}`}</strong>
+                {/* Steps List */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
+                  {plan.steps?.map((step: any, idx: number) => (
+                    <div
+                      key={idx}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '16px',
+                        padding: '14px 18px',
+                        borderRadius: 'var(--radius-sm)',
+                        background: 'rgba(255, 255, 255, 0.02)',
+                        border: '1px solid var(--border-dark)',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '30px',
+                          height: '30px',
+                          borderRadius: 'var(--radius-xs)',
+                          background: 'var(--brand-orange)',
+                          color: '#FFFFFF',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 800,
+                          fontSize: '0.88rem',
+                        }}
+                      >
+                        {step.step || idx + 1}
                       </div>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: '#34d399' }}>
-                        {formatMicroUsd(res.costMicroUsd || res.priceMicroUsd)} ({res.durationMs || 16}ms)
+
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.94rem', color: '#FFFFFF' }}>
+                          {step.toolName || step.toolSlug}
+                        </div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-dark-secondary)' }}>
+                          {step.reason || 'Matched requirement capability'}
+                        </div>
+                      </div>
+
+                      <div style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', color: '#38BDF8', fontWeight: 700 }}>
+                        {formatMicroUsd(step.priceMicroUsd)}
                       </div>
                     </div>
-
-                    <JsonViewer data={res.output || res} maxHeight="160px" title="Step Output Data" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Right Column: Active Agent & Budget Guard */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* Agent Selector Card */}
-          <div className="glass-panel" style={{ padding: '20px' }}>
-            <h4 style={{ fontSize: '0.95rem', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Bot size={16} color="var(--accent-cyan)" />
-              Calling Agent Identity
-            </h4>
-
-            {agents.length > 0 ? (
-              <div className="form-group" style={{ marginBottom: '12px' }}>
-                <select
-                  className="form-select"
-                  value={selectedAgentId}
-                  onChange={(e) => setSelectedAgentId(e.target.value)}
-                >
-                  {agents.map((ag) => (
-                    <option key={ag.id} value={ag.id}>
-                      {ag.name} (Budget: {formatMicroUsd(ag.maxBudgetMicroUsd)})
-                    </option>
                   ))}
-                </select>
-              </div>
-            ) : (
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
-                Using built-in system demo agent with unrestricted sandbox permissions.
+                </div>
+
+                {/* Execute Trigger */}
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    paddingTop: '18px',
+                    borderTop: '1px solid var(--border-dark)',
+                    flexWrap: 'wrap',
+                    gap: '14px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', color: 'var(--text-dark-secondary)' }}>
+                    <ShieldCheck size={16} color="var(--status-emerald)" />
+                    <span>Funds will be atomically reserved and settled upon verified 200 OK</span>
+                  </div>
+
+                  <button
+                    className="btn btn-primary btn-lg"
+                    disabled={executing}
+                    onClick={handleExecutePlan}
+                  >
+                    {executing ? <RotateCw size={16} style={{ animation: 'spin 1s infinite linear' }} /> : <Play size={16} />}
+                    {executing ? 'Executing Pipeline Calls...' : 'Approve & Execute Pipeline'}
+                  </button>
+                </div>
+
+                {executionError && (
+                  <div
+                    style={{
+                      marginTop: '16px',
+                      padding: '14px 18px',
+                      borderRadius: 'var(--radius-sm)',
+                      background: 'var(--status-rose-bg)',
+                      border: '1px solid var(--status-rose-border)',
+                      color: '#F87171',
+                      fontSize: '0.88rem',
+                    }}
+                  >
+                    {executionError}
+                  </div>
+                )}
               </div>
             )}
 
-            <div
-              style={{
-                padding: '12px',
-                borderRadius: 'var(--radius-sm)',
-                background: 'rgba(255, 255, 255, 0.02)',
-                border: '1px solid var(--border-subtle)',
-                fontSize: '0.8rem',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Wallet Balance:</span>
-                <span style={{ fontWeight: 700, color: '#34d399', fontFamily: 'var(--font-mono)' }}>
-                  {formatMicroUsd(wallet?.balance)}
-                </span>
+            {/* Execution Results Card */}
+            {executionResults && (
+              <div className="card-dark" style={{ padding: '28px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                  <CheckCircle size={22} color="var(--status-emerald)" />
+                  <div>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#FFFFFF' }}>
+                      Execution Complete & Quality Verified
+                    </h3>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-dark-muted)' }}>
+                      Double-entry ledger deductions processed successfully
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {executionResults.map((res: any, idx: number) => (
+                    <div
+                      key={idx}
+                      style={{
+                        padding: '18px',
+                        borderRadius: 'var(--radius-sm)',
+                        background: 'rgba(255, 255, 255, 0.02)',
+                        border: '1px solid var(--border-dark)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span className="badge badge-emerald">STEP {res.step || idx + 1}</span>
+                          <strong style={{ fontSize: '0.98rem', color: '#FFFFFF' }}>{res.toolName || `Step ${idx + 1}`}</strong>
+                        </div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.88rem', color: '#34D399', fontWeight: 700 }}>
+                          {formatMicroUsd(res.costMicroUsd || res.priceMicroUsd)} ({res.durationMs || 16}ms)
+                        </div>
+                      </div>
+
+                      <JsonViewer data={res.output || res} maxHeight="160px" title="Step Output Payload" />
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-muted)' }}>In-flight Reserved:</span>
-                <span style={{ fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
-                  {formatMicroUsd(wallet?.reservedBalance || 0)}
-                </span>
-              </div>
-            </div>
+            )}
           </div>
 
-          {/* Invariant Guarantees */}
-          <div className="glass-panel" style={{ padding: '20px' }}>
-            <h4 style={{ fontSize: '0.95rem', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <ShieldCheck size={16} color="var(--accent-emerald)" />
-              Security & Financial Invariants
-            </h4>
+          {/* Sidebar Column: Calling Identity & Ledger Invariants */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', flex: '1 1 30%' }}>
+            {/* Identity Card */}
+            <div className="card-dark" style={{ padding: '24px' }}>
+              <div
+                style={{
+                  fontSize: '0.72rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  fontWeight: 800,
+                  color: 'var(--brand-orange)',
+                  marginBottom: '10px',
+                }}
+              >
+                Calling Agent Identity
+              </div>
 
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-              <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                <span style={{ color: 'var(--accent-cyan)' }}>•</span>
-                <span><strong>Atomic Fund Reservation:</strong> Balances locked before execution to prevent concurrent overspending.</span>
-              </li>
-              <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                <span style={{ color: 'var(--accent-emerald)' }}>•</span>
-                <span><strong>Idempotency Enforcement:</strong> Replays with identical keys return cached results with zero double-charge.</span>
-              </li>
-              <li style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                <span style={{ color: 'var(--accent-amber)' }}>•</span>
-                <span><strong>Automated Reversals:</strong> Upstream 5xx, timeouts, or schema mismatches trigger instant credit refunds.</span>
-              </li>
-            </ul>
+              {agents.length > 0 ? (
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <select
+                    className="form-select"
+                    value={selectedAgentId}
+                    onChange={(e) => setSelectedAgentId(e.target.value)}
+                  >
+                    {agents.map((ag) => (
+                      <option key={ag.id} value={ag.id}>
+                        {ag.name} (Budget: {formatMicroUsd(ag.maxBudgetMicroUsd)})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div style={{ fontSize: '0.84rem', color: 'var(--text-dark-secondary)', marginBottom: '14px' }}>
+                  Operating as default autonomous sandbox agent.
+                </div>
+              )}
+
+              <div
+                style={{
+                  padding: '14px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid var(--border-dark)',
+                  fontSize: '0.82rem',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <span style={{ color: 'var(--text-dark-muted)' }}>Available Balance:</span>
+                  <span style={{ fontWeight: 800, color: '#34D399', fontFamily: 'var(--font-mono)' }}>
+                    {formatMicroUsd(wallet?.balance)}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--text-dark-muted)' }}>In-flight Reserved:</span>
+                  <span style={{ fontWeight: 600, color: 'var(--text-dark-secondary)', fontFamily: 'var(--font-mono)' }}>
+                    {formatMicroUsd(wallet?.reservedBalance || 0)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Invariant Guarantees */}
+            <div className="card-dark" style={{ padding: '24px' }}>
+              <div
+                style={{
+                  fontSize: '0.72rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  fontWeight: 800,
+                  color: 'var(--brand-orange)',
+                  marginBottom: '14px',
+                }}
+              >
+                Financial & Security Invariants
+              </div>
+
+              <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '14px', fontSize: '0.82rem', color: 'var(--text-dark-secondary)' }}>
+                <li style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                  <Zap size={15} color="var(--brand-orange)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <div>
+                    <strong style={{ color: '#FFFFFF' }}>Atomic Fund Reservation:</strong> Balances locked via DB mutex prior to outbound call dispatch.
+                  </div>
+                </li>
+                <li style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                  <ShieldCheck size={15} color="var(--status-emerald)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <div>
+                    <strong style={{ color: '#FFFFFF' }}>Idempotency Enforcement:</strong> Replays with identical key return cached results without double charge.
+                  </div>
+                </li>
+                <li style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                  <Layers size={15} color="var(--status-amber)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <div>
+                    <strong style={{ color: '#FFFFFF' }}>Compensating Reversals:</strong> Timeouts or upstream 5xx errors trigger instant micro-USD ledger credits.
+                  </div>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
