@@ -50,7 +50,14 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: tooltoll-frontend
+<<<<<<< HEAD
     restart: unless-stopped
+=======
+    restart: always
+    environment:
+      BACKEND_URL: http://backend:4000
+      AI_SERVICE_URL: http://ai-service:8001
+>>>>>>> origin/main
     ports:
       - "5174:5173"
     depends_on:
