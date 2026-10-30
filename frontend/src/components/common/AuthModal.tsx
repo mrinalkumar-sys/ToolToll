@@ -5,11 +5,19 @@ import { X, Shield, Hammer, ShoppingCart, Sparkles, AlertCircle } from 'lucide-r
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialTab?: 'login' | 'register';
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
+export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialTab = 'login' }) => {
   const { login, register, loginDemo, isLoading } = useAuth();
-  const [tab, setTab] = useState<'login' | 'register'>('login');
+  const [tab, setTab] = useState<'login' | 'register'>(initialTab);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setTab(initialTab);
+      setError(null);
+    }
+  }, [isOpen, initialTab]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');

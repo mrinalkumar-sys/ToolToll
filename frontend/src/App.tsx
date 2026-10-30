@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Navbar, NavTab } from './components/common/Navbar';
 import { Footer } from './components/common/Footer';
 import { AuthModal } from './components/common/AuthModal';
+import { AuthPromptModal } from './components/common/AuthPromptModal';
 import { TopupModal } from './components/common/TopupModal';
 import { MarketplaceView } from './components/views/MarketplaceView';
 import { PlaygroundView } from './components/views/PlaygroundView';
@@ -13,107 +14,54 @@ import { AdminView } from './components/views/AdminView';
 import { AiIntelligenceView } from './components/views/AiIntelligenceView';
 import { Tool } from './types';
 
-const VALID_TABS: NavTab[] = [
-  'marketplace',
-  'playground',
-  'agents',
-  'creator',
-  'wallet',
-  'admin',
-  'ai',
-];
-
-const PROTECTED_TABS: NavTab[] = ['agents', 'creator', 'wallet', 'admin'];
-
-function getInitialTab(): NavTab {
-  if (typeof window === 'undefined') return 'marketplace';
-
-  // 1. Check URL hash (e.g. #wallet, #agents)
-  const hash = window.location.hash.replace(/^#/, '').toLowerCase() as NavTab;
-  if (VALID_TABS.includes(hash)) return hash;
-
-  // 2. Check query parameter (e.g. ?tab=wallet)
-  const params = new URLSearchParams(window.location.search);
-  const tabParam = params.get('tab')?.toLowerCase() as NavTab;
-  if (VALID_TABS.includes(tabParam)) return tabParam;
-
-  return 'marketplace';
-}
-
 function MainApp() {
-  const { isAuthenticated, isLoading } = useAuth();
-  const [currentTab, setCurrentTab] = useState<NavTab>(getInitialTab);
+  const { user, isAuthenticated, activeRole } = useAuth();
+  const [currentTab, setCurrentTab] = useState<NavTab>('marketplace');
   const [selectedToolForPlayground, setSelectedToolForPlayground] = useState<Tool | null>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalTab, setAuthModalTab] = useState<'login' | 'register'>('login');
+  const [authPromptOpen, setAuthPromptOpen] = useState(false);
+  const [authPromptAction, setAuthPromptAction] = useState<string | undefined>(undefined);
   const [topupModalOpen, setTopupModalOpen] = useState(false);
-  const wasAuthenticatedRef = useRef<boolean>(isAuthenticated);
 
-  // Sync tab with URL hash change
+  // Securely enforce role and auth boundaries across navigation
   useEffect(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash.replace(/^#/, '').toLowerCase() as NavTab;
-      if (VALID_TABS.includes(hash)) {
-        if (!isAuthenticated && !isLoading && PROTECTED_TABS.includes(hash)) {
-          setCurrentTab('marketplace');
-          window.location.hash = 'marketplace';
-          setAuthModalOpen(true);
-        } else {
-          setCurrentTab(hash);
-        }
-      }
-    };
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [isAuthenticated, isLoading]);
-
-  // Auth route guard:
-  // - If user is unauthenticated and opens/stays on a protected tab, redirect to marketplace
-  // - If unauthenticated visitor directly attempts to open a protected route, trigger auth modal
-  // - Wait for isLoading so page refresh while authenticated doesn't bounce the user
-  useEffect(() => {
-    if (isLoading) return; // Wait until initial session verification finishes
-
-    const isProtected = PROTECTED_TABS.includes(currentTab);
-
-    if (!isAuthenticated && isProtected) {
-      queueMicrotask(() => {
+    if (!isAuthenticated) {
+      if (currentTab === 'admin' || currentTab === 'creator' || currentTab === 'wallet' || currentTab === 'agents') {
         setCurrentTab('marketplace');
-      });
-      if (window.location.hash) {
-        window.location.hash = 'marketplace';
       }
-      // If visitor was not logged in (e.g. direct URL entry or manual attempt), show login modal
-      if (!wasAuthenticatedRef.current) {
-        setAuthModalOpen(true);
+    } else {
+      if (currentTab === 'admin' && !user?.isAdmin) {
+        setCurrentTab(activeRole === 'creator' ? 'creator' : 'marketplace');
+      } else if (currentTab === 'creator' && activeRole !== 'creator' && !user?.isAdmin) {
+        setCurrentTab('marketplace');
+      } else if (currentTab === 'agents' && activeRole === 'creator' && !user?.isConsumer && !user?.isAdmin) {
+        setCurrentTab('creator');
       }
     }
-
-    wasAuthenticatedRef.current = isAuthenticated;
-  }, [isAuthenticated, isLoading, currentTab]);
-
-  const handleSelectTab = (tab: NavTab) => {
-    const isProtected = PROTECTED_TABS.includes(tab);
-    if (!isAuthenticated && isProtected) {
-      setAuthModalOpen(true);
-      return;
-    }
-    setCurrentTab(tab);
-    if (window.location.hash || tab !== 'marketplace') {
-      window.location.hash = tab;
-    }
-  };
+  }, [isAuthenticated, activeRole, user, currentTab]);
 
   const handleSelectToolForPlayground = (tool: Tool) => {
     setSelectedToolForPlayground(tool);
-    handleSelectTab('playground');
+    setCurrentTab('playground');
+  };
+
+  const handleOpenAuth = (tab: 'login' | 'register' = 'login') => {
+    setAuthModalTab(tab);
+    setAuthModalOpen(true);
+  };
+
+  const handleRequireAuth = (actionName: string) => {
+    setAuthPromptAction(actionName);
+    setAuthPromptOpen(true);
   };
 
   return (
     <div className="app-container">
       <Navbar
         currentTab={currentTab}
-        onSelectTab={handleSelectTab}
-        onOpenAuth={() => setAuthModalOpen(true)}
+        onSelectTab={setCurrentTab}
+        onOpenAuth={handleOpenAuth}
         onOpenTopup={() => setTopupModalOpen(true)}
       />
 
@@ -121,32 +69,61 @@ function MainApp() {
         {currentTab === 'marketplace' && (
           <MarketplaceView
             onSelectToolForPlayground={handleSelectToolForPlayground}
-            onOpenAuth={() => setAuthModalOpen(true)}
+            onOpenAuth={() => handleOpenAuth('login')}
           />
         )}
 
         {currentTab === 'playground' && (
-          <PlaygroundView initialTool={selectedToolForPlayground} />
+          <PlaygroundView
+            initialTool={selectedToolForPlayground}
+            onRequireAuth={handleRequireAuth}
+          />
         )}
 
-        {currentTab === 'agents' && <AgentManagementView />}
+        {currentTab === 'agents' && isAuthenticated && (activeRole === 'consumer' || user?.isAdmin || user?.isConsumer) && (
+          <AgentManagementView />
+        )}
 
-        {currentTab === 'creator' && <CreatorView />}
+        {currentTab === 'creator' && isAuthenticated && (activeRole === 'creator' || user?.isAdmin || user?.isCreator) && (
+          <CreatorView />
+        )}
 
-        {currentTab === 'wallet' && (
+        {currentTab === 'wallet' && isAuthenticated && (
           <WalletView onOpenTopup={() => setTopupModalOpen(true)} />
         )}
 
-        {currentTab === 'admin' && <AdminView />}
+        {currentTab === 'admin' && isAuthenticated && user?.isAdmin && (
+          <AdminView />
+        )}
 
-        {currentTab === 'ai' && <AiIntelligenceView />}
+        {currentTab === 'ai' && (
+          <AiIntelligenceView
+            onSelectTab={setCurrentTab}
+            onRequireAuth={handleRequireAuth}
+          />
+        )}
       </main>
 
       <Footer />
 
+      <AuthPromptModal
+        isOpen={authPromptOpen}
+        onClose={() => setAuthPromptOpen(false)}
+        actionTitle={authPromptAction}
+        onSignIn={() => {
+          setAuthPromptOpen(false);
+          handleOpenAuth('login');
+        }}
+        onCreateAccount={() => {
+          setAuthPromptOpen(false);
+          handleOpenAuth('register');
+        }}
+      />
+
       <AuthModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
+        initialTab={authModalTab}
       />
 
       <TopupModal

@@ -184,6 +184,53 @@ export interface ReconciliationReport {
   generatedAt: string;
 }
 
+export interface QualityJudgeResult {
+  call_id?: string | null;
+  tool_id?: string;
+  tool_name?: string;
+  verdict: 'ok' | 'bad';
+  reason: string;
+  confidence: number;
+  quality_score?: number;
+  evaluation_stage: string;
+  evaluation_status: string;
+  refund_recommended: boolean;
+  reliability_status?: 'passed' | 'failed' | 'warning';
+  schema_compliant?: boolean;
+  schema_details?: string;
+  semantic_relevance?: 'high' | 'moderate' | 'low' | 'mismatch';
+  semantic_explanation?: string;
+  latency_acceptable?: boolean;
+  measured_latency_ms?: number;
+  sla_threshold_ms?: number;
+  http_status?: number;
+  issues_found?: Array<{ title: string; evidence: string; severity: 'critical' | 'warning' | 'info' }>;
+  actionable_recommendations?: string[];
+  evaluated_at?: string;
+  is_simulated?: boolean;
+}
+
+export interface AIPlanResponse {
+  task: string;
+  is_achievable: boolean;
+  impossibility_reason?: string | null;
+  plan_explanation: string;
+  steps: Array<{
+    step_id: string;
+    tool_id: string;
+    tool_name: string;
+    explanation: string;
+    input_parameters: Record<string, any>;
+    depends_on_step_ids: string[];
+    estimated_cost_usd: number;
+  }>;
+  total_estimated_cost_usd: number;
+  total_estimated_cost_micro_dollars: number;
+  step_count: number;
+  requires_human_approval: boolean;
+  approval_reason?: string | null;
+}
+
 export interface AuditLog {
   id: string;
   userId?: string;
@@ -193,4 +240,24 @@ export interface AuditLog {
   metadata?: Record<string, unknown>;
   ipAddress?: string;
   createdAt: string;
+}
+
+export interface RefundEligibility {
+  callId: string;
+  toolName: string;
+  originalChargeMicroUsd: string;
+  refundableAmountMicroUsd: string;
+  isEligible: boolean;
+  status: 'ELIGIBLE' | 'NOT_ELIGIBLE' | 'REFUNDED' | 'PENDING_REVIEW';
+  reason: string;
+  alreadyRefunded: boolean;
+}
+
+export interface RefundResult {
+  callId: string;
+  status: 'REFUNDED';
+  alreadyRefunded: boolean;
+  refundedAmountMicroUsd: string;
+  newBalanceMicroUsd: string;
+  message: string;
 }

@@ -20,10 +20,11 @@ import { Tool } from '../../types';
 
 interface PlaygroundViewProps {
   initialTool?: Tool | null;
+  onRequireAuth?: (actionName: string) => void;
 }
 
-export const PlaygroundView: React.FC<PlaygroundViewProps> = ({ initialTool }) => {
-  const { wallet, refreshWallet, isAuthenticated, loginDemo } = useAuth();
+export const PlaygroundView: React.FC<PlaygroundViewProps> = ({ initialTool, onRequireAuth }) => {
+  const { wallet, refreshWallet, isAuthenticated } = useAuth();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
   const [taskPrompt, setTaskPrompt] = useState<string>(
@@ -48,6 +49,9 @@ export const PlaygroundView: React.FC<PlaygroundViewProps> = ({ initialTool }) =
           setSelectedAgentId(data[0].id);
         }
       }).catch(console.error);
+    } else {
+      setAgents([]);
+      setSelectedAgentId('');
     }
   }, [isAuthenticated]);
 
@@ -67,6 +71,12 @@ export const PlaygroundView: React.FC<PlaygroundViewProps> = ({ initialTool }) =
   ];
 
   const handleGeneratePlan = async () => {
+    if (!isAuthenticated) {
+      if (onRequireAuth) {
+        onRequireAuth('Generate Plan');
+      }
+      return;
+    }
     if (!taskPrompt.trim()) return;
     setPlanning(true);
     setPlanError(null);
@@ -85,14 +95,17 @@ export const PlaygroundView: React.FC<PlaygroundViewProps> = ({ initialTool }) =
   };
 
   const handleExecutePlan = async () => {
+    if (!isAuthenticated) {
+      if (onRequireAuth) {
+        onRequireAuth('Execute Tool Chain');
+      }
+      return;
+    }
     if (!plan || !plan.steps) return;
     setExecuting(true);
     setExecutionError(null);
 
     try {
-      if (!isAuthenticated) {
-        await loginDemo('consumer');
-      }
       const res = await api.executeAgentPlan(
         plan.task,
         plan.steps,
@@ -131,6 +144,37 @@ export const PlaygroundView: React.FC<PlaygroundViewProps> = ({ initialTool }) =
             Submit natural language requests. The ToolToll orchestrator discovers verified marketplace tools, computes upfront micro-USD budgets, and executes calls under atomic financial constraints.
           </p>
         </div>
+
+        {!isAuthenticated && (
+          <div
+            style={{
+              padding: '14px 20px',
+              borderRadius: 'var(--radius-sm)',
+              background: 'rgba(255, 85, 0, 0.08)',
+              border: '1px solid var(--brand-orange-border)',
+              marginBottom: '26px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '14px',
+              flexWrap: 'wrap',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Sparkles size={18} color="var(--brand-orange)" />
+              <span style={{ fontSize: '0.88rem', color: '#FFFFFF', lineHeight: 1.5 }}>
+                <strong>Guest Preview Mode:</strong> Explore prompts and inspect tool parameters. Sign in to execute live API calls and manage budgets.
+              </span>
+            </div>
+            <button
+              className="btn btn-primary btn-sm"
+              style={{ padding: '6px 14px', fontSize: '0.8rem', flexShrink: 0 }}
+              onClick={() => onRequireAuth && onRequireAuth('Sign In')}
+            >
+              Sign In to Execute
+            </button>
+          </div>
+        )}
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '28px' }}>
           {/* Main Console Column */}
@@ -403,28 +447,44 @@ export const PlaygroundView: React.FC<PlaygroundViewProps> = ({ initialTool }) =
                 </div>
               )}
 
-              <div
-                style={{
-                  padding: '14px',
-                  borderRadius: 'var(--radius-sm)',
-                  background: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid var(--border-dark)',
-                  fontSize: '0.82rem',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ color: 'var(--text-dark-muted)' }}>Available Balance:</span>
-                  <span style={{ fontWeight: 800, color: '#34D399', fontFamily: 'var(--font-mono)' }}>
-                    {formatMicroUsd(wallet?.balance)}
-                  </span>
+              {isAuthenticated ? (
+                <div
+                  style={{
+                    padding: '14px',
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px solid var(--border-dark)',
+                    fontSize: '0.82rem',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ color: 'var(--text-dark-muted)' }}>Available Balance:</span>
+                    <span style={{ fontWeight: 800, color: '#34D399', fontFamily: 'var(--font-mono)' }}>
+                      {formatMicroUsd(wallet?.balance)}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-dark-muted)' }}>In-flight Reserved:</span>
+                    <span style={{ fontWeight: 600, color: 'var(--text-dark-secondary)', fontFamily: 'var(--font-mono)' }}>
+                      {formatMicroUsd(wallet?.reservedBalance || 0)}
+                    </span>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-dark-muted)' }}>In-flight Reserved:</span>
-                  <span style={{ fontWeight: 600, color: 'var(--text-dark-secondary)', fontFamily: 'var(--font-mono)' }}>
-                    {formatMicroUsd(wallet?.reservedBalance || 0)}
-                  </span>
+              ) : (
+                <div
+                  style={{
+                    padding: '14px',
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px solid var(--border-dark)',
+                    fontSize: '0.82rem',
+                    color: 'var(--text-dark-muted)',
+                    textAlign: 'center',
+                  }}
+                >
+                  <span>Sign in to view wallet balance & live double-entry ledger.</span>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Invariant Guarantees */}

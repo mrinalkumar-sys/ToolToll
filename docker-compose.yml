@@ -1,60 +1,61 @@
+version: "3.9"
+
+
 services:
-  postgres:
-    image: postgres:alpine
+  db:
+    image: postgres:18-alpine
     container_name: tooltoll-postgres
-    restart: always
     environment:
-      POSTGRES_USER: tooltoll
-      POSTGRES_PASSWORD: tooltoll
-      POSTGRES_DB: tooltoll_db
+      POSTGRES_DB: tooltoll
+      POSTGRES_USER: tooltoll_user
+      POSTGRES_PASSWORD: tooltoll_secret_pass
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U tooltoll -d tooltoll_db"]
-      interval: 3s
-      timeout: 3s
-      retries: 5
+      test: ["CMD-SHELL", "pg_isready -U tooltoll_user -d tooltoll"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: tooltoll-backend
-    restart: always
-    environment:
-      APP_ENV: development
-      PORT: 4000
-      DATABASE_URL: postgresql://tooltoll:tooltoll@postgres:5432/tooltoll_db?schema=public
-      FRONTEND_URL: http://localhost:5174
-      BACKEND_URL: http://localhost:4000
-      CORS_ORIGINS: http://localhost:5174,http://localhost:4000   
-      AUTH_SECRET_KEY: super-secret-jwt-signing-key-tooltoll-mvp-32chars-min
-      CREDENTIAL_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
-      CREDENTIAL_ENCRYPTION_KEY_VERSION: v1
-      LLM_PROVIDER: mock
-      LLM_API_KEY: mock-key
-      PAYMENT_ADAPTER: mock
-      PAYOUT_ADAPTER: mock
-      PLATFORM_FEE_BPS: 1000
-      TOOL_EXECUTION_TIMEOUT_MS: 15000
-      MAX_REQUEST_SIZE: 1048576
-    ports:
-      - "4000:4000"
+    restart: unless-stopped
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://tooltoll_user:tooltoll_secret_pass@db:5432/tooltoll_db?schema=public
+      CORS_ORIGINS: http://localhost:5174,http://localhost:5173
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-tooltoll-super-secure-jwt-signing-secret-key-32-chars-min}
+      AGENT_CREDENTIAL_ENCRYPTION_KEY: ${AGENT_CREDENTIAL_ENCRYPTION_KEY:-Dq0qDk8e0b6w0rZ3A1r1mE8lV2gT4yU6iO8pA0sD2fG=}
+      CREDENTIAL_ENCRYPTION_KEY: ${CREDENTIAL_ENCRYPTION_KEY:-Dq0qDk8e0b6w0rZ3A1r1mE8lV2gT4yU6iO8pA0sD2fG=}
+      APP_ENV: production
+      FRONTEND_URL: http://localhost:5174
+      PAYPAL_MODE: sandbox
+      PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID}
+      PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET}
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+    ports:
+      - "8001:4000"
+
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: tooltoll-frontend
-    restart: always
+    restart: unless-stopped
     ports:
       - "5174:5173"
     depends_on:
       - backend
+
 volumes:
   postgres_data:
+    name: tooltoll_postgres_data

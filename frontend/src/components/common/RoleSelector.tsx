@@ -6,6 +6,8 @@ interface RoleSelectorProps {
   activeRole: UserRole;
   onSelectRole: (role: UserRole) => void;
   isAdmin: boolean;
+  isCreator?: boolean;
+  isConsumer?: boolean;
   disabled?: boolean;
   onLogout?: () => void;
   isLoggingOut?: boolean;
@@ -15,6 +17,8 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
   activeRole,
   onSelectRole,
   isAdmin,
+  isCreator,
+  isConsumer,
   disabled = false,
   onLogout,
   isLoggingOut = false,
@@ -30,22 +34,28 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
     sublabel: string;
     icon: React.FC<{ size?: number; color?: string }>;
     dotColor: string;
-  }> = [
-    {
+  }> = [];
+
+  // Strictly filter roles according to verified user authorizations
+  if (isConsumer ?? true) {
+    roles.push({
       id: 'consumer',
       label: 'Role: Consumer',
       sublabel: 'Agent owner & tool consumer',
       icon: Bot,
       dotColor: '#10B981', // Emerald
-    },
-    {
+    });
+  }
+
+  if (isCreator) {
+    roles.push({
       id: 'creator',
       label: 'Role: Creator',
       sublabel: 'API publisher & earnings studio',
       icon: Hammer,
       dotColor: '#FF5500', // Brand Orange
-    },
-  ];
+    });
+  }
 
   if (isAdmin) {
     roles.push({
@@ -54,6 +64,17 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
       sublabel: 'Governance, moderation & solvency',
       icon: Shield,
       dotColor: '#38BDF8', // Sky blue
+    });
+  }
+
+  // Fallback safe entry
+  if (roles.length === 0) {
+    roles.push({
+      id: activeRole || 'consumer',
+      label: `Role: ${activeRole.toUpperCase()}`,
+      sublabel: 'Authenticated session',
+      icon: Bot,
+      dotColor: '#10B981',
     });
   }
 
@@ -148,8 +169,10 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
           color: '#F3F4F6',
           border: isOpen ? '1px solid var(--brand-orange)' : '1px solid rgba(255, 255, 255, 0.16)',
           borderRadius: 'var(--radius-xs)',
-          padding: '6px 12px',
-          fontSize: '0.8rem',
+          padding: '5px 12px',
+          fontSize: '0.80rem',
+          whiteSpace: 'nowrap',
+          flexShrink: 0,
           fontWeight: 600,
           cursor: disabled ? 'not-allowed' : 'pointer',
           transition: 'all 0.18s ease',
@@ -207,16 +230,16 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
           <div
             style={{
               padding: '6px 10px 4px',
-              fontSize: '0.66rem',
+              fontSize: '0.64rem',
               fontWeight: 800,
               textTransform: 'uppercase',
               letterSpacing: '0.08em',
               color: '#9CA3AF',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.07)',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
               marginBottom: '3px',
             }}
           >
-            Switch Active Role
+            {roles.length > 1 ? 'Switch Active Role' : 'Authorized Role'}
           </div>
 
           {roles.map((role, idx) => {

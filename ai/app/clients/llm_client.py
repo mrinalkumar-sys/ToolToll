@@ -68,7 +68,15 @@ class LLMClient:
         Generates text response from Groq.
         """
         client = self._ensure_configured()
-        target_model = model or settings.GROQ_MODEL
+        if self.provider == "groq":
+            if model and not model.startswith("claude"):
+                target_model = model
+            elif model and ("haiku" in model.lower() or "fast" in str(model).lower()):
+                target_model = settings.GROQ_FAST_MODEL
+            else:
+                target_model = settings.GROQ_MODEL
+        else:
+            target_model = model or settings.ANTHROPIC_MODEL
 
         messages = []
         if system_prompt:
@@ -136,7 +144,15 @@ class LLMClient:
         using Groq's json_object response format.
         """
         client = self._ensure_configured()
-        target_model = model or settings.GROQ_MODEL
+        if self.provider == "groq":
+            if model and not model.startswith("claude"):
+                target_model = model
+            elif model and ("haiku" in model.lower() or "fast" in str(model).lower()):
+                target_model = settings.GROQ_FAST_MODEL
+            else:
+                target_model = settings.GROQ_MODEL
+        else:
+            target_model = model or settings.ANTHROPIC_MODEL
         json_schema = json.dumps(schema_class.model_json_schema(), indent=2)
 
         system_instruction = (

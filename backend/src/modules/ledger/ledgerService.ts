@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
-import { InsufficientBalanceError, NotFoundError } from '../../utils/errors';
+import { InsufficientBalanceError, NotFoundError, BadRequestError, ForbiddenError } from '../../utils/errors';
 import { calculatePlatformFee } from '../../utils/money';
 
 export type AccountName =
@@ -372,5 +372,199 @@ export class LedgerService {
     }, {
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     });
+  }
+
+  /**
+   * Atomically process a refund/reversal for a previously charged tool call.
+   * Invariants:
+   * 1. Row-level lock on the consumer Wallet and ToolCall verification.
+   * 2. Prevents duplicate refunds (idempotency).
+   * 3. Double-entry balancing compensating entries:
+   *    - DEBIT CREATOR_PAYABLE (creatorEarningsMicroUsd)
+   *    - DEBIT PLATFORM_REVENUE (platformFeeMicroUsd)
+   *    - CREDIT USER_WALLET (priceMicroUsd)
+   *    Total DEBITS == Total CREDITS.
+   * 4. Updates CreatorEarning to 'REVERSED'.
+   * 5. Updates ToolCall to 'REVERSED', isReversed: true, failureReason: reason.
+   * 6. Appends AuditLog entry for full auditability.
+   */
+  static async processCallRefund(params: {
+    callId: string;
+    userId: string;
+    reason: string;
+    isAdmin?: boolean;
+  }) {
+    const { callId, userId, reason, isAdmin } = params;
+
+    // Retry loop for transient concurrent serialization if needed
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await prisma.$transaction(async (tx) => {
+          // 1. Lock ToolCall with row-level lock
+          const calls = await tx.$queryRaw<Array<{
+            id: string;
+            agentId: string;
+            priceMicroUsd: bigint;
+            status: string;
+            isReversed: boolean;
+            creatorEarningsMicroUsd: bigint;
+            platformFeeMicroUsd: bigint;
+          }>>`
+            SELECT id, "agentId", "priceMicroUsd", status, "isReversed", "creatorEarningsMicroUsd", "platformFeeMicroUsd"
+            FROM tool_calls
+            WHERE id = ${callId}
+            FOR UPDATE
+          `;
+
+          if (!calls || calls.length === 0) {
+            throw new NotFoundError(`Execution '${callId}' not found`);
+          }
+
+          const call = calls[0];
+
+          // 2. Fetch agent for ownership check
+          const agent = await tx.agent.findUnique({
+            where: { id: call.agentId },
+            select: { userId: true },
+          });
+
+          if (!agent || (agent.userId !== userId && !isAdmin)) {
+            throw new ForbiddenError('You do not have permission to refund this execution');
+          }
+
+          // 3. Idempotency check: if already reversed, return existing status safely without re-crediting
+          if (call.isReversed || call.status === 'REVERSED') {
+            const wallet = await tx.wallet.findUnique({ where: { userId: agent.userId } });
+            return {
+              callId: call.id,
+              alreadyRefunded: true,
+              status: 'REFUNDED' as const,
+              refundedAmountMicroUsd: call.priceMicroUsd.toString(),
+              newBalanceMicroUsd: (wallet?.balance ?? 0n).toString(),
+              message: 'Execution has already been refunded',
+            };
+          }
+
+          // 4. Verify original charge
+          if (call.priceMicroUsd <= 0n) {
+            throw new BadRequestError('Cannot refund an execution that was not charged');
+          }
+
+          // 5. Lock consumer wallet
+          const wallets = await tx.$queryRaw<Array<{ id: string; balance: bigint; reservedBalance: bigint }>>`
+            SELECT id, balance, "reservedBalance"
+            FROM wallets
+            WHERE "userId" = ${agent.userId}
+            FOR UPDATE
+          `;
+
+          if (!wallets || wallets.length === 0) {
+            throw new NotFoundError('Consumer wallet not found');
+          }
+
+          const wallet = wallets[0];
+          const newBalance = wallet.balance + call.priceMicroUsd;
+
+          // 6. Credit consumer wallet
+          await tx.wallet.update({
+            where: { id: wallet.id },
+            data: { balance: newBalance },
+          });
+
+          // 7. Reverse creator earning if exists
+          const creatorEarning = await tx.creatorEarning.findUnique({
+            where: { toolCallId: callId },
+          });
+          if (creatorEarning && creatorEarning.status === 'PAYABLE') {
+            await tx.creatorEarning.update({
+              where: { id: creatorEarning.id },
+              data: { status: 'REVERSED' },
+            });
+          }
+
+          // 8. Append double-entry ledger entries
+          const creatorDebit = call.creatorEarningsMicroUsd;
+          const platformFeeDebit = call.platformFeeMicroUsd;
+
+          await tx.ledgerEntry.createMany({
+            data: [
+              {
+                walletId: wallet.id,
+                callId,
+                account: 'USER_WALLET',
+                entryType: 'CREDIT',
+                amount: call.priceMicroUsd,
+                balanceAfter: newBalance,
+                description: `Refund credited for call ${callId}: ${reason}`,
+                referenceType: 'REFUND',
+                referenceId: callId,
+              },
+              {
+                walletId: wallet.id,
+                callId,
+                account: 'CREATOR_PAYABLE',
+                entryType: 'DEBIT',
+                amount: creatorDebit,
+                description: `Earning reversed for call ${callId}`,
+                referenceType: 'REFUND',
+                referenceId: callId,
+              },
+              {
+                walletId: wallet.id,
+                callId,
+                account: 'PLATFORM_REVENUE',
+                entryType: 'DEBIT',
+                amount: platformFeeDebit,
+                description: `Platform fee reversed for call ${callId}`,
+                referenceType: 'REFUND',
+                referenceId: callId,
+              },
+            ],
+          });
+
+          // 9. Update tool call status
+          await tx.toolCall.update({
+            where: { id: callId },
+            data: {
+              status: 'REVERSED',
+              isReversed: true,
+              failureReason: reason,
+            },
+          });
+
+          // 10. Audit log
+          await tx.auditLog.create({
+            data: {
+              userId,
+              action: 'TOOL_CALL_REFUNDED',
+              resourceType: 'tool_calls',
+              resourceId: callId,
+              metadata: {
+                amountMicroUsd: call.priceMicroUsd.toString(),
+                reason,
+              },
+            },
+          });
+
+          return {
+            callId: call.id,
+            alreadyRefunded: false,
+            status: 'REFUNDED' as const,
+            refundedAmountMicroUsd: call.priceMicroUsd.toString(),
+            newBalanceMicroUsd: newBalance.toString(),
+            message: 'Refund successfully processed and wallet credited',
+          };
+        });
+      } catch (err: any) {
+        // If serialization failure code 40001, wait a few ms and retry or check if already completed
+        if (err?.code === 'P2010' && err?.meta?.code === '40001' && attempt < 2) {
+          await new Promise((r) => setTimeout(r, 40 * (attempt + 1)));
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    throw new Error('Could not serialize refund transaction after retries');
   }
 }

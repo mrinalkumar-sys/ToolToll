@@ -33,11 +33,11 @@ class Settings(BaseSettings):
         description="Groq API Key (gsk_...)"
     )
     GROQ_MODEL: str = Field(
-        default="llama-3.3-70b-versatile",
+        default="openai/gpt-oss-120b",
         description="Primary high-performance model on Groq for planning, synthesis, and onboarding"
     )
     GROQ_FAST_MODEL: str = Field(
-        default="llama-3.1-8b-instant",
+        default="openai/gpt-oss-20b",
         description="Ultra-fast model on Groq for Stage-2 Quality Judge and Price Advisor"
     )
     GROQ_TIMEOUT_SECONDS: float = Field(

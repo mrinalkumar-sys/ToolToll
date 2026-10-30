@@ -1,7 +1,7 @@
 import uuid
 from typing import Any, Dict, List, Optional
 import httpx
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from app.core.config import settings
 from app.core.exceptions import (
@@ -20,11 +20,11 @@ class BackendToolRecord(BaseModel):
     creator_id: Optional[str] = None
     name: str
     slug: Optional[str] = None
-    short_desc: str
+    short_desc: str = ""
     detailed_desc: Optional[str] = None
-    category: str
+    category: str = "Utility"
     tags: List[str] = []
-    base_url: str
+    base_url: str = ""
     endpoint_path: str = "/"
     http_method: str = "POST"
     input_schema: Dict[str, Any] = {}
@@ -37,6 +37,48 @@ class BackendToolRecord(BaseModel):
     total_calls: int = 0
     success_calls: int = 0
     average_latency_ms: float = 0.0
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_fields(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        d = dict(data)
+        if "short_desc" not in d:
+            d["short_desc"] = d.get("shortDescription") or d.get("description") or ""
+        if "detailed_desc" not in d:
+            d["detailed_desc"] = d.get("detailedDescription") or d.get("description")
+        if "base_url" not in d:
+            d["base_url"] = d.get("baseUrl") or "https://api.tooltoll.com"
+        if "endpoint_path" not in d:
+            d["endpoint_path"] = d.get("endpointPath") or "/"
+        if "http_method" not in d:
+            d["http_method"] = d.get("httpMethod") or "POST"
+        if "input_schema" not in d:
+            d["input_schema"] = d.get("inputSchema") or {}
+        if "output_schema" not in d:
+            d["output_schema"] = d.get("outputSchema")
+        if "price_per_call" not in d:
+            if "priceMicroUsd" in d:
+                try:
+                    d["price_per_call"] = float(d["priceMicroUsd"]) / 1_000_000.0
+                except (ValueError, TypeError):
+                    d["price_per_call"] = 0.001
+            elif "price_micro_usd" in d:
+                try:
+                    d["price_per_call"] = float(d["price_micro_usd"]) / 1_000_000.0
+                except (ValueError, TypeError):
+                    d["price_per_call"] = 0.001
+        if isinstance(d.get("tags"), str):
+            d["tags"] = [t.strip() for t in d["tags"].replace(",", " ").split() if t.strip()]
+        if "timeout_seconds" not in d and "timeoutMs" in d:
+            try:
+                d["timeout_seconds"] = max(1, int(d["timeoutMs"]) // 1000)
+            except (ValueError, TypeError):
+                d["timeout_seconds"] = 15
+        if "status" in d:
+            d["status"] = str(d["status"]).lower()
+        return d
 
 
 class PaidCallExecutionResult(BaseModel):
@@ -93,6 +135,8 @@ class ToolTollBackendClient:
                 res = await client.get("/api/tools", params=params, headers=headers)
                 if res.status_code == 200:
                     raw_list = res.json()
+                    if isinstance(raw_list, dict):
+                        raw_list = raw_list.get("data") or raw_list.get("tools") or []
                     return [BackendToolRecord.model_validate(item) for item in raw_list]
                 elif res.status_code == 401:
                     raise UnauthorizedAgentException("Backend rejected authentication when fetching tools")
@@ -127,7 +171,10 @@ class ToolTollBackendClient:
             async with self._get_client() as client:
                 res = await client.get("/api/tools/search", params=params, headers=headers)
                 if res.status_code == 200:
-                    return [BackendToolRecord.model_validate(item) for item in res.json()]
+                    raw_data = res.json()
+                    if isinstance(raw_data, dict):
+                        raw_data = raw_data.get("data") or raw_data.get("tools") or []
+                    return [BackendToolRecord.model_validate(item) for item in raw_data]
                 elif res.status_code == 404:
                     # Fallback to list_approved_tools if search route is not enabled
                     return await self.list_approved_tools(category=category, auth_headers=auth_headers)
@@ -151,7 +198,10 @@ class ToolTollBackendClient:
             async with self._get_client() as client:
                 res = await client.get(f"/api/tools/{tool_id}", headers=headers)
                 if res.status_code == 200:
-                    return BackendToolRecord.model_validate(res.json())
+                    raw_data = res.json()
+                    if isinstance(raw_data, dict) and "data" in raw_data:
+                        raw_data = raw_data["data"]
+                    return BackendToolRecord.model_validate(raw_data)
                 elif res.status_code == 404:
                     raise ToolNotFoundError(f"Tool with ID '{tool_id}' not found in active catalog.")
                 elif res.status_code == 401:

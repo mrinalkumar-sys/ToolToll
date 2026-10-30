@@ -11,6 +11,7 @@ import {
   Hammer,
   Brain,
   LogIn,
+  LogOut,
   Plus,
   Menu,
   X,
@@ -29,7 +30,7 @@ export type NavTab =
 interface NavbarProps {
   currentTab: NavTab;
   onSelectTab: (tab: NavTab) => void;
-  onOpenAuth: () => void;
+  onOpenAuth: (tab?: 'login' | 'register') => void;
   onOpenTopup: () => void;
 }
 
@@ -62,26 +63,48 @@ export const Navbar: React.FC<NavbarProps> = ({
     setMobileMenuOpen(false);
   };
 
-  // Navigation items based on authentication status:
-  // - Before login (public): Marketplace, Playground, AI Service
-  // - After login (authenticated): Marketplace, Playground, My Agents, Creator Studio, Wallet, AI Service (+ Admin if admin)
-  const navItems: { id: NavTab; label: string; icon: React.FC<{ size?: number }> }[] = isAuthenticated
-    ? [
-        { id: 'marketplace', label: 'Marketplace', icon: Store },
-        { id: 'playground', label: 'Playground', icon: Bot },
-        { id: 'agents', label: 'My Agents', icon: Bot },
-        { id: 'creator', label: 'Creator Studio', icon: Hammer },
-        { id: 'wallet', label: 'Wallet', icon: Wallet },
-        { id: 'ai', label: 'AI Service', icon: Brain },
-      ]
-    : [
-        { id: 'marketplace', label: 'Marketplace', icon: Store },
-        { id: 'playground', label: 'Playground', icon: Bot },
-        { id: 'ai', label: 'AI Service', icon: Brain },
-      ];
+  // Derive navigation strictly from authenticated user state and active role
+  const navItems: { id: NavTab; label: string; icon: React.FC<{ size?: number }> }[] = [];
 
-  if (isAuthenticated && user?.isAdmin) {
-    navItems.push({ id: 'admin', label: 'Admin', icon: Shield });
+  if (!isAuthenticated) {
+    // A. Guest / Logged-Out User: show only Marketplace, Playground, AI Service
+    navItems.push(
+      { id: 'marketplace', label: 'Marketplace', icon: Store },
+      { id: 'playground', label: 'Playground', icon: Bot },
+      { id: 'ai', label: 'AI Service', icon: Brain }
+    );
+  } else if (activeRole === 'creator') {
+    // C. Creator Navigation: show Marketplace, Creator Studio, AI Service, Wallet / Earnings
+    navItems.push(
+      { id: 'marketplace', label: 'Marketplace', icon: Store },
+      { id: 'creator', label: 'Creator Studio', icon: Hammer },
+      { id: 'ai', label: 'AI Service', icon: Brain },
+      { id: 'wallet', label: 'Earnings & Wallet', icon: Wallet }
+    );
+    // If the creator also holds consumer authorization, allow playground testing
+    if (user?.isConsumer) {
+      navItems.splice(1, 0, { id: 'playground', label: 'Playground', icon: Bot });
+    }
+  } else if (activeRole === 'admin') {
+    // D. Admin Navigation: full platform oversight and management controls
+    navItems.push(
+      { id: 'marketplace', label: 'Marketplace', icon: Store },
+      { id: 'playground', label: 'Playground', icon: Bot },
+      { id: 'agents', label: 'My Agents', icon: Bot },
+      { id: 'creator', label: 'Creator Studio', icon: Hammer },
+      { id: 'wallet', label: 'Wallet', icon: Wallet },
+      { id: 'ai', label: 'AI Service', icon: Brain },
+      { id: 'admin', label: 'Admin', icon: Shield }
+    );
+  } else {
+    // B. Consumer Navigation: show Marketplace, Playground, My Agents, Wallet, AI Service
+    navItems.push(
+      { id: 'marketplace', label: 'Marketplace', icon: Store },
+      { id: 'playground', label: 'Playground', icon: Bot },
+      { id: 'agents', label: 'My Agents', icon: Bot },
+      { id: 'wallet', label: 'Wallet', icon: Wallet },
+      { id: 'ai', label: 'AI Service', icon: Brain }
+    );
   }
 
   return (
@@ -90,7 +113,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         position: 'sticky',
         top: 0,
         zIndex: 100,
-        backgroundColor: 'rgba(9, 10, 14, 0.92)',
+        backgroundColor: 'rgba(9, 10, 14, 0.94)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
         borderBottom: '1px solid var(--border-dark)',
@@ -98,167 +121,219 @@ export const Navbar: React.FC<NavbarProps> = ({
       }}
     >
       <div
-        className="container-editorial"
+        className="navbar-main-container"
         style={{
-          height: '74px',
+          height: '72px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: '24px',
+          width: '100%',
+          maxWidth: '1440px',
+          margin: '0 auto',
+          padding: '0 24px',
+          gap: '16px',
+          boxSizing: 'border-box',
+          position: 'relative',
         }}
       >
-        {/* Brand Logo - Inspired by Editorial Wordmarks */}
+        {/* ========================================================= */}
+        {/* 1. LEFT SECTION: ToolToll Brand Logo                       */}
+        {/* ========================================================= */}
         <div
-          onClick={() => handleTabClick('marketplace')}
+          className="navbar-brand-section"
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '12px',
-            cursor: 'pointer',
-            userSelect: 'none',
             flexShrink: 0,
           }}
         >
           <div
+            onClick={() => handleTabClick('marketplace')}
             style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: 'var(--radius-xs)',
-              background: 'var(--brand-orange)',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: 'var(--shadow-orange)',
-              transition: 'transform 0.2s ease',
+              gap: '10px',
+              cursor: 'pointer',
+              userSelect: 'none',
+              flexShrink: 0,
             }}
           >
-            <Sparkles size={19} color="#FFFFFF" strokeWidth={2.5} />
-          </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span
-                style={{
-                  fontFamily: 'var(--font-display)',
-                  fontWeight: 900,
-                  fontSize: '1.35rem',
-                  letterSpacing: '-0.04em',
-                  color: '#FFFFFF',
-                  textTransform: 'uppercase',
-                }}
-              >
-                TOOLTOLL
-              </span>
-              <span
-                className="badge badge-orange"
-                style={{ fontSize: '0.62rem', padding: '1px 6px', fontWeight: 800 }}
-              >
-                PRO
-              </span>
-            </div>
             <div
-              className="brand-subtitle"
               style={{
-                fontSize: '0.66rem',
-                color: 'var(--text-dark-muted)',
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                fontWeight: 600,
+                width: '34px',
+                height: '34px',
+                borderRadius: 'var(--radius-xs)',
+                background: 'var(--brand-orange)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: 'var(--shadow-orange)',
+                transition: 'transform 0.2s ease',
+                flexShrink: 0,
               }}
             >
-              Machine Economy Gateway
+              <Sparkles size={18} color="#FFFFFF" strokeWidth={2.5} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-display)',
+                    fontWeight: 900,
+                    fontSize: '1.28rem',
+                    letterSpacing: '-0.03em',
+                    color: '#FFFFFF',
+                    textTransform: 'uppercase',
+                    lineHeight: 1,
+                  }}
+                >
+                  TOOLTOLL
+                </span>
+                <span
+                  className="badge badge-orange"
+                  style={{ fontSize: '0.60rem', padding: '1px 5px', fontWeight: 800, lineHeight: 1.2 }}
+                >
+                  PRO
+                </span>
+              </div>
+              <div
+                className="brand-subtitle"
+                style={{
+                  fontSize: '0.62rem',
+                  color: 'var(--text-dark-muted)',
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                  fontWeight: 600,
+                  marginTop: '3px',
+                  lineHeight: 1,
+                }}
+              >
+                Machine Economy Gateway
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Desktop Navigation Tabs */}
-        <nav
-          style={{
-            display: 'none',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '4px',
-            background: 'rgba(255, 255, 255, 0.03)',
-            padding: '4px',
-            borderRadius: 'var(--radius-sm)',
-            border: '1px solid var(--border-dark)',
-            flex: 1,
-            width: '100%',
-            maxWidth: isAuthenticated ? (user?.isAdmin ? '860px' : '800px') : '540px',
-            margin: '0 auto',
-            minWidth: 0,
-          }}
-          className="desktop-nav"
-        >
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentTab === item.id;
-            return (
-              <button
-                key={item.id}
-                className="btn btn-sm"
-                style={{
-                  flex: 1,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  background: isActive ? 'rgba(255, 255, 255, 0.09)' : 'transparent',
-                  color: isActive ? '#FFFFFF' : 'var(--text-dark-secondary)',
-                  border: isActive ? '1px solid var(--border-dark-hover)' : '1px solid transparent',
-                  fontWeight: isActive ? 700 : 500,
-                  position: 'relative',
-                  whiteSpace: 'nowrap',
-                  padding: '7px 12px',
-                  borderRadius: 'var(--radius-xs)',
-                  transition: 'all 0.15s ease',
-                  cursor: 'pointer',
-                  minWidth: 0,
-                }}
-                onClick={() => handleTabClick(item.id)}
-              >
-                <Icon size={14} />
-                <span>{item.label}</span>
-                {isActive && (
-                  <span
-                    style={{
-                      position: 'absolute',
-                      bottom: '-5px',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      width: '24px',
-                      height: '2px',
-                      backgroundColor: 'var(--brand-orange)',
-                      borderRadius: '2px',
-                    }}
-                  />
-                )}
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* Right Section: Wallet, Role & Auth Actions */}
+        {/* ========================================================= */}
+        {/* 2. CENTER SECTION: Flexible Navigation Menu               */}
+        {/* ========================================================= */}
         <div
+          className="navbar-nav-section"
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '10px',
+            justifyContent: 'center',
+            flex: '1 1 auto',
+            minWidth: 0,
+            padding: '0 4px',
+          }}
+        >
+          <nav
+            className="navbar-nav-pill"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: navItems.length <= 3 ? '6px' : '4px',
+              background: 'rgba(255, 255, 255, 0.03)',
+              padding: '4px 6px',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--border-dark)',
+              width: 'max-content',
+              maxWidth: '100%',
+              boxShadow: '0 2px 14px rgba(0, 0, 0, 0.25)',
+              overflowX: 'auto',
+              scrollbarWidth: 'none',
+            }}
+          >
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = currentTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  className="btn btn-sm nav-tab-btn"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '7px',
+                    padding:
+                      navItems.length <= 3
+                        ? '7px 16px'
+                        : navItems.length <= 5
+                        ? '6px 12px'
+                        : '6px 9px',
+                    background: isActive ? 'rgba(255, 255, 255, 0.09)' : 'transparent',
+                    color: isActive ? '#FFFFFF' : 'var(--text-dark-secondary)',
+                    border: isActive ? '1px solid var(--border-dark-hover)' : '1px solid transparent',
+                    fontWeight: isActive ? 700 : 500,
+                    fontSize:
+                      navItems.length <= 3
+                        ? '0.84rem'
+                        : navItems.length <= 5
+                        ? '0.81rem'
+                        : '0.78rem',
+                    position: 'relative',
+                    whiteSpace: 'nowrap',
+                    letterSpacing: '-0.01em',
+                    borderRadius: 'var(--radius-xs)',
+                    flexShrink: 0,
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => handleTabClick(item.id)}
+                >
+                  <Icon size={14} />
+                  <span>{item.label}</span>
+                  {isActive && (
+                    <span
+                      className="nav-active-indicator"
+                      style={{
+                        position: 'absolute',
+                        bottom: '-3px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        width: '24px',
+                        height: '2px',
+                        backgroundColor: 'var(--brand-orange)',
+                        borderRadius: '2px',
+                        boxShadow: '0 0 8px rgba(255, 85, 0, 0.8)',
+                        pointerEvents: 'none',
+                      }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* ========================================================= */}
+        {/* 3. RIGHT SECTION: Balance, Top Up & Role Controls          */}
+        {/* ========================================================= */}
+        <div
+          className="navbar-actions-section"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            gap: '12px',
             flexShrink: 0,
           }}
         >
           {isAuthenticated ? (
             <>
-              {/* Wallet Pill - Monospace Micro-USD with Emerald Indicator */}
+              {/* Micro Balance & Top Up Container */}
               <div
-                className="desktop-wallet-pill"
+                className="navbar-balance-pill"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   background: 'rgba(255, 255, 255, 0.03)',
                   border: '1px solid var(--border-dark)',
                   borderRadius: 'var(--radius-sm)',
-                  padding: '4px 6px 4px 10px',
-                  gap: '8px',
+                  padding: '4px 8px 4px 12px',
+                  gap: '10px',
                   flexShrink: 0,
                 }}
               >
@@ -268,11 +343,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                       display: 'flex',
                       alignItems: 'center',
                       gap: '5px',
-                      fontSize: '0.62rem',
+                      fontSize: '0.60rem',
                       color: 'var(--text-dark-muted)',
                       textTransform: 'uppercase',
                       fontWeight: 700,
                       letterSpacing: '0.04em',
+                      lineHeight: 1,
                     }}
                   >
                     <span
@@ -281,7 +357,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                         height: '6px',
                         borderRadius: '50%',
                         backgroundColor: 'var(--status-emerald)',
-                        boxShadow: '0 0 8px rgba(16, 185, 129, 0.6)',
+                        boxShadow: '0 0 6px rgba(16, 185, 129, 0.6)',
+                        flexShrink: 0,
                       }}
                     />
                     Micro Balance
@@ -292,6 +369,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                       fontSize: '0.88rem',
                       color: '#FFFFFF',
                       fontFamily: 'var(--font-mono)',
+                      letterSpacing: '-0.01em',
+                      marginTop: '2px',
+                      lineHeight: 1.1,
                     }}
                   >
                     {formatMicroUsd(wallet?.balance)}
@@ -301,9 +381,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   className="btn btn-primary btn-sm"
                   style={{
-                    padding: '4px 8px',
+                    padding: '4px 9px',
                     fontSize: '0.72rem',
+                    fontWeight: 700,
                     borderRadius: 'var(--radius-xs)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    flexShrink: 0,
                   }}
                   onClick={onOpenTopup}
                   title="Add Micro-USD to wallet"
@@ -313,8 +398,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               </div>
 
-              {/* Custom Dark Navy Role Selector Dropdown with Integrated Logout Option */}
-              <div className="role-selector-wrapper" style={{ flexShrink: 0 }}>
+              {/* Role Dropdown Section */}
+              <div className="navbar-role-wrapper" style={{ flexShrink: 0 }}>
                 <RoleSelector
                   activeRole={activeRole}
                   onSelectRole={(newRole) => {
@@ -324,30 +409,42 @@ export const Navbar: React.FC<NavbarProps> = ({
                     else onSelectTab('marketplace');
                   }}
                   isAdmin={Boolean(user?.isAdmin)}
+                  isCreator={Boolean(user?.isCreator)}
+                  isConsumer={Boolean(user?.isConsumer)}
                   onLogout={handleLogout}
                   isLoggingOut={isLoggingOut}
                 />
               </div>
             </>
           ) : (
-            <button
-              className="btn btn-primary btn-sm"
-              style={{ fontWeight: 700, padding: '9px 18px', flexShrink: 0 }}
-              onClick={onOpenAuth}
-            >
-              <LogIn size={15} />
-              Sign In / Demo
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                className="btn btn-secondary btn-sm"
+                style={{ fontWeight: 600, padding: '7px 14px', flexShrink: 0, fontSize: '0.82rem' }}
+                onClick={() => onOpenAuth('login')}
+              >
+                <LogIn size={14} />
+                Sign In
+              </button>
+              <button
+                className="btn btn-primary btn-sm"
+                style={{ fontWeight: 700, padding: '7px 16px', flexShrink: 0, fontSize: '0.82rem' }}
+                onClick={() => onOpenAuth('register')}
+              >
+                <Sparkles size={14} />
+                Sign Up
+              </button>
+            </div>
           )}
 
-          {/* Mobile Menu Hamburger */}
+          {/* Mobile Menu Hamburger (Visible only on small mobile screens < 820px) */}
           <button
             className="btn btn-secondary btn-sm mobile-menu-btn"
-            style={{ padding: '8px', flexShrink: 0 }}
+            style={{ padding: '7px', flexShrink: 0 }}
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle navigation menu"
           >
-            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
         </div>
       </div>
@@ -358,12 +455,74 @@ export const Navbar: React.FC<NavbarProps> = ({
           style={{
             borderTop: '1px solid var(--border-dark)',
             backgroundColor: 'var(--bg-dark-surface)',
-            padding: '16px 24px 24px',
+            padding: '16px 20px 24px',
             display: 'flex',
             flexDirection: 'column',
             gap: '8px',
           }}
         >
+          {isAuthenticated && (
+            <div
+              className="mobile-wallet-card"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 14px',
+                borderRadius: 'var(--radius-sm)',
+                background: 'rgba(255, 255, 255, 0.04)',
+                border: '1px solid var(--border-dark)',
+                marginBottom: '6px',
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    fontSize: '0.64rem',
+                    color: 'var(--text-dark-muted)',
+                    textTransform: 'uppercase',
+                    fontWeight: 700,
+                  }}
+                >
+                  <span
+                    style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      backgroundColor: 'var(--status-emerald)',
+                    }}
+                  />
+                  Micro Balance
+                </div>
+                <div
+                  style={{
+                    fontWeight: 800,
+                    fontSize: '0.96rem',
+                    color: '#FFFFFF',
+                    fontFamily: 'var(--font-mono)',
+                    marginTop: '2px',
+                  }}
+                >
+                  {formatMicroUsd(wallet?.balance)}
+                </div>
+              </div>
+              <button
+                className="btn btn-primary btn-sm"
+                style={{ padding: '5px 12px', fontSize: '0.76rem', fontWeight: 700 }}
+                onClick={() => {
+                  onOpenTopup();
+                  setMobileMenuOpen(false);
+                }}
+              >
+                <Plus size={12} strokeWidth={3} />
+                Top Up
+              </button>
+            </div>
+          )}
+
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentTab === item.id;
@@ -376,33 +535,31 @@ export const Navbar: React.FC<NavbarProps> = ({
                   background: isActive ? 'var(--brand-orange-subtle)' : 'transparent',
                   color: isActive ? 'var(--brand-orange)' : 'var(--text-dark-primary)',
                   border: isActive ? '1px solid var(--brand-orange-border)' : '1px solid transparent',
-                  padding: '12px 16px',
+                  padding: '10px 14px',
                   borderRadius: 'var(--radius-sm)',
+                  fontSize: '0.88rem',
                 }}
                 onClick={() => handleTabClick(item.id)}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Icon size={18} />
+                  <Icon size={16} />
                   <span>{item.label}</span>
                 </div>
-                <ChevronRight size={16} />
+                <ChevronRight size={15} />
               </button>
             );
           })}
 
           {isAuthenticated && (
-            <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border-dark)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ marginTop: '10px', paddingTop: '12px', borderTop: '1px solid var(--border-dark)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
-                <div>
-                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#FFFFFF' }}>{user?.name}</div>
-                </div>
+                <span style={{ fontSize: '0.74rem', color: 'var(--text-dark-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Session Role
+                </span>
                 <span className="badge badge-orange">{activeRole.toUpperCase()}</span>
               </div>
 
               <div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-dark-muted)', marginBottom: '6px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  Active Role
-                </div>
                 <RoleSelector
                   activeRole={activeRole}
                   onSelectRole={(newRole) => {
@@ -413,39 +570,120 @@ export const Navbar: React.FC<NavbarProps> = ({
                     setMobileMenuOpen(false);
                   }}
                   isAdmin={Boolean(user?.isAdmin)}
+                  isCreator={Boolean(user?.isCreator)}
+                  isConsumer={Boolean(user?.isConsumer)}
                   onLogout={handleLogout}
                   isLoggingOut={isLoggingOut}
                 />
               </div>
             </div>
           )}
+
+          {!isAuthenticated && (
+            <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-dark)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <button
+                className="btn btn-secondary w-full"
+                onClick={() => {
+                  onOpenAuth('login');
+                  setMobileMenuOpen(false);
+                }}
+              >
+                <LogIn size={14} />
+                Sign In
+              </button>
+              <button
+                className="btn btn-primary w-full"
+                onClick={() => {
+                  onOpenAuth('register');
+                  setMobileMenuOpen(false);
+                }}
+              >
+                <Sparkles size={14} />
+                Sign Up
+              </button>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Inline styles for media query handling */}
+      {/* Responsive Breakpoints & Clean Styling */}
       <style>{`
-        .desktop-nav .btn {
-          white-space: nowrap !important;
-          flex: 1 1 0% !important;
-          min-width: 0 !important;
+        /* Hide scrollbars for clean aesthetic */
+        .navbar-nav-pill::-webkit-scrollbar {
+          display: none;
         }
-        .desktop-nav .btn:hover:not(:disabled) {
-          background: rgba(255, 255, 255, 0.08) !important;
+
+        /* Desktop & Tablet: >= 820px keep all 3 sections side by side in ONE horizontal row */
+        @media (min-width: 820px) {
+          .navbar-nav-section {
+            display: flex !important;
+          }
+          .mobile-menu-btn {
+            display: none !important;
+          }
+        }
+
+        /* 1280px - 1440px+ (Standard Desktop) */
+        @media (min-width: 1280px) {
+          .navbar-main-container {
+            padding: 0 28px !important;
+            gap: 16px !important;
+          }
+        }
+
+        /* 1024px - 1279px (Tablet Landscape / Compact Desktop) */
+        @media (min-width: 820px) and (max-width: 1279px) {
+          .navbar-main-container {
+            padding: 0 16px !important;
+            gap: 10px !important;
+          }
+          .brand-subtitle {
+            display: none !important;
+          }
+          .navbar-balance-pill {
+            padding: 3px 6px 3px 10px !important;
+            gap: 8px !important;
+          }
+          .navbar-actions-section {
+            gap: 8px !important;
+          }
+          .nav-tab-btn {
+            padding: 5px 8px !important;
+            font-size: 0.76rem !important;
+            gap: 5px !important;
+          }
+        }
+
+        /* Mobile Phones (< 820px) */
+        @media (max-width: 819px) {
+          .navbar-nav-section {
+            display: none !important;
+          }
+          .mobile-menu-btn {
+            display: inline-flex !important;
+          }
+          .brand-subtitle {
+            display: none !important;
+          }
+          .navbar-main-container {
+            padding: 0 16px !important;
+          }
+        }
+
+        /* Extra small mobile (< 560px) */
+        @media (max-width: 560px) {
+          .navbar-balance-pill {
+            display: none !important;
+          }
+        }
+
+        .nav-tab-btn {
+          transition: all 0.15s ease;
+        }
+        .nav-tab-btn:hover {
+          background: rgba(255, 255, 255, 0.07) !important;
           color: #FFFFFF !important;
-        }
-        @media (min-width: 1100px) {
-          .desktop-nav { display: flex !important; }
-          .mobile-menu-btn { display: none !important; }
-        }
-        @media (max-width: 1099px) {
-          .desktop-nav { display: none !important; }
-          .mobile-menu-btn { display: inline-flex !important; }
-        }
-        @media (max-width: 600px) {
-          .desktop-wallet-pill { display: none !important; }
-        }
-        .btn-logout-prominent {
-          display: inline-flex !important;
+          border-color: var(--border-dark-hover) !important;
         }
       `}</style>
     </header>
