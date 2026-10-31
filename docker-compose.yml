@@ -41,6 +41,8 @@ services:
       LLM_PROVIDER: ${LLM_PROVIDER:-mock}
     ports:
       - "8001:4000"
+    volumes:
+      - ./backend/src:/app/src
 
   frontend:
     build:
@@ -53,6 +55,8 @@ services:
       AI_SERVICE_URL: http://ai-service:8001
     ports:
       - "5174:5173"
+    volumes:
+      - ./frontend/src:/app/src
     depends_on:
       - backend
 

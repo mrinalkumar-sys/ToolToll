@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   ShieldCheck,
   RefreshCw,
@@ -22,8 +23,18 @@ import { Badge } from '../components/Badge.jsx';
 import { Modal } from '../components/Modal.jsx';
 
 export const AdminPage = () => {
+  const location = useLocation();
+
   // Three primary navigation tabs requested: 1) Listing, 2) Moderation queue, 3) Earnings
   const [activeTab, setActiveTab] = useState('listing');
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    if (tab && ['listing', 'moderation', 'earnings'].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [location.search]);
 
   // Listing sub-tab: 'creators' or 'consumers'
   const [listingSubTab, setListingSubTab] = useState('creators');

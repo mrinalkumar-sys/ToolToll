@@ -38,7 +38,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await api.getCurrentUser();
       setUser(data.user);
       setWallet(data.wallet);
-      const resolvedRole: UserRole = data.user.isAdmin
+      const isUserAdmin = Boolean(data.user.isAdmin || String((data.user as any)?.role).toLowerCase() === 'admin');
+      const resolvedRole: UserRole = isUserAdmin
         ? 'admin'
         : ((data.user as any).role
             ? String((data.user as any).role).toLowerCase() === 'creator'
@@ -77,7 +78,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(res.user);
       setWallet(res.wallet);
       setToken(res.token);
-      const resolvedRole: UserRole = res.user.isAdmin
+      const isUserAdmin = Boolean(res.user.isAdmin || String((res.user as any)?.role).toLowerCase() === 'admin');
+      const resolvedRole: UserRole = isUserAdmin
         ? 'admin'
         : ((res.user as any).role
             ? String((res.user as any).role).toLowerCase() === 'creator'

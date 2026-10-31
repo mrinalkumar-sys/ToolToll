@@ -17,6 +17,9 @@ import {
   Menu,
   X,
   ChevronRight,
+  Layers,
+  Clock,
+  TrendingUp,
 } from 'lucide-react';
 
 export type NavTab =
@@ -26,6 +29,9 @@ export type NavTab =
   | 'creator'
   | 'wallet'
   | 'admin'
+  | 'admin-listing'
+  | 'admin-moderation'
+  | 'admin-earnings'
   | 'ai';
 
 interface NavbarProps {
@@ -46,7 +52,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Detect currently authenticated user's actual role from the session
-  const actualRole: UserRole = user?.isAdmin
+  const actualRole: UserRole = (user?.isAdmin || String((user as any)?.role).toLowerCase() === 'admin')
     ? 'admin'
     : ((user as any)?.role
         ? String((user as any).role).toLowerCase() === 'creator'
@@ -55,6 +61,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     : 'consumer';
 
   const isActualCreator = actualRole === 'creator';
+  const isActualAdmin = actualRole === 'admin';
 
   const handleLogout = async () => {
     if (isLoggingOut) return;
@@ -75,7 +82,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     setMobileMenuOpen(false);
   };
 
-  // Derive navigation strictly from authenticated user state and active role
+  // Derive navigation strictly from authenticated user state and actual role
   const navItems: { id: NavTab; label: string; icon: React.FC<{ size?: number }> }[] = [];
 
   if (!isAuthenticated) {
@@ -85,7 +92,14 @@ export const Navbar: React.FC<NavbarProps> = ({
       { id: 'playground', label: 'Playground', icon: Bot },
       { id: 'ai', label: 'AI Service', icon: Brain }
     );
-  } else if (actualRole === 'creator') {
+  } else if (isActualAdmin) {
+    // B. Admin Navigation: STRICTLY ONLY the three requested nav bars
+    navItems.push(
+      { id: 'admin-listing', label: 'Listing', icon: Layers },
+      { id: 'admin-moderation', label: 'Moderation queue', icon: Clock },
+      { id: 'admin-earnings', label: 'Earnings', icon: TrendingUp }
+    );
+  } else if (isActualCreator) {
     // C. Creator Navigation: show Marketplace, Playground, Creator Studio, AI Service
     navItems.push(
       { id: 'marketplace', label: 'Marketplace', icon: Store },
@@ -93,19 +107,8 @@ export const Navbar: React.FC<NavbarProps> = ({
       { id: 'creator', label: 'Creator Studio', icon: Hammer },
       { id: 'ai', label: 'AI Service', icon: Brain }
     );
-  } else if (actualRole === 'admin') {
-    // D. Admin Navigation: full platform oversight and management controls
-    navItems.push(
-      { id: 'marketplace', label: 'Marketplace', icon: Store },
-      { id: 'playground', label: 'Playground', icon: Bot },
-      { id: 'agents', label: 'My Agents', icon: Bot },
-      { id: 'creator', label: 'Creator Studio', icon: Hammer },
-      { id: 'wallet', label: 'Wallet', icon: Wallet },
-      { id: 'ai', label: 'AI Service', icon: Brain },
-      { id: 'admin', label: 'Admin', icon: Shield }
-    );
   } else {
-    // B. Consumer Navigation: show Marketplace, Playground, My Agents, Wallet, AI Service
+    // D. Consumer Navigation: show Marketplace, Playground, My Agents, Wallet, AI Service
     navItems.push(
       { id: 'marketplace', label: 'Marketplace', icon: Store },
       { id: 'playground', label: 'Playground', icon: Bot },
@@ -158,7 +161,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           }}
         >
           <div
-            onClick={() => handleTabClick('marketplace')}
+            onClick={() => handleTabClick(isActualAdmin ? 'admin-listing' : 'marketplace')}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -261,7 +264,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = currentTab === item.id;
+              const isActive =
+                currentTab === item.id ||
+                (item.id === 'admin-listing' && currentTab === 'admin');
               return (
                 <button
                   key={item.id}
@@ -335,8 +340,8 @@ export const Navbar: React.FC<NavbarProps> = ({
         >
           {isAuthenticated ? (
             <>
-              {/* Micro Balance & Top Up Container (Hidden for Creator role) */}
-              {!isActualCreator && (
+              {/* Micro Balance & Top Up Container (Hidden for Creator and Admin roles) */}
+              {!isActualCreator && !isActualAdmin && (
                 <div
                   className="navbar-balance-pill"
                   style={{
@@ -391,26 +396,24 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </div>
                   </div>
 
-                  {actualRole !== 'admin' && currentTab !== 'admin' && (
-                    <button
-                      className="btn btn-primary btn-sm"
-                      style={{
-                        padding: '4px 9px',
-                        fontSize: '0.72rem',
-                        fontWeight: 700,
-                        borderRadius: 'var(--radius-xs)',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        flexShrink: 0,
-                      }}
-                      onClick={onOpenTopup}
-                      title="Add Micro-USD to wallet"
-                    >
-                      <Plus size={12} strokeWidth={3} />
-                      Top Up
-                    </button>
-                  )}
+                  <button
+                    className="btn btn-primary btn-sm"
+                    style={{
+                      padding: '4px 9px',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      borderRadius: 'var(--radius-xs)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      flexShrink: 0,
+                    }}
+                    onClick={onOpenTopup}
+                    title="Add Micro-USD to wallet"
+                  >
+                    <Plus size={12} strokeWidth={3} />
+                    Top Up
+                  </button>
                 </div>
               )}
 
@@ -423,6 +426,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   isConsumer={actualRole === 'consumer'}
                   onLogout={handleLogout}
                   isLoggingOut={isLoggingOut}
+                  onSelectTab={onSelectTab}
                 />
               </div>
             </>
@@ -471,7 +475,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             gap: '8px',
           }}
         >
-          {isAuthenticated && !isActualCreator && (
+          {isAuthenticated && !isActualCreator && !isActualAdmin && (
             <div
               className="mobile-wallet-card"
               style={{
@@ -519,19 +523,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {formatMicroUsd(wallet?.balance)}
                 </div>
               </div>
-              {actualRole !== 'admin' && currentTab !== 'admin' && (
-                <button
-                  className="btn btn-primary btn-sm"
-                  style={{ padding: '5px 12px', fontSize: '0.76rem', fontWeight: 700 }}
-                  onClick={() => {
-                    onOpenTopup();
-                    setMobileMenuOpen(false);
-                  }}
-                >
-                  <Plus size={12} strokeWidth={3} />
-                  Top Up
-                </button>
-              )}
+              <button
+                className="btn btn-primary btn-sm"
+                style={{ padding: '5px 12px', fontSize: '0.76rem', fontWeight: 700 }}
+                onClick={() => {
+                  onOpenTopup();
+                  setMobileMenuOpen(false);
+                }}
+              >
+                <Plus size={12} strokeWidth={3} />
+                Top Up
+              </button>
             </div>
           )}
 
@@ -579,6 +581,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   isConsumer={actualRole === 'consumer'}
                   onLogout={handleLogout}
                   isLoggingOut={isLoggingOut}
+                  onSelectTab={onSelectTab}
                 />
               </div>
             </div>

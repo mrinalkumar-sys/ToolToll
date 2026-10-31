@@ -64,13 +64,15 @@ export const ConsumerDashboard = () => {
             <Sparkles className="w-4 h-4 text-cyan-300" />
             Launch AI Playground
           </Link>
-          <Link
-            to="/wallet"
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 transition"
-          >
-            <WalletIcon className="w-4 h-4 text-emerald-400" />
-            Top Up Balance
-          </Link>
+          {user?.role !== 'admin' && (
+            <Link
+              to="/wallet"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 transition"
+            >
+              <WalletIcon className="w-4 h-4 text-emerald-400" />
+              Top Up Balance
+            </Link>
+          )}
         </div>
       </div>
 

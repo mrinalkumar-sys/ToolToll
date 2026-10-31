@@ -11,43 +11,43 @@ import {
   LogOut,
   ChevronDown,
   Coins,
+  Clock,
+  TrendingUp,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../services/api.js';
 import { Badge } from './Badge.jsx';
 
 export const Layout = ({ children }) => {
-  const { user, logout, quickSwitchUser } = useAuth();
+  const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
   const [walletBalance, setWalletBalance] = useState('0.00');
 
   useEffect(() => {
-    if (user) {
+    if (user && user.role !== 'admin') {
       api.getWallet()
         .then((w) => setWalletBalance(Number(w.available_balance || 0).toFixed(2)))
         .catch(() => {});
     }
   }, [user, location.pathname]);
 
-  const navItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: Layers },
-    { name: 'Marketplace', path: '/marketplace', icon: Cpu },
-    { name: 'Agent Playground', path: '/playground', icon: Sparkles },
-    { name: 'My Agents', path: '/agents', icon: Bot },
-    { name: 'Wallet & Ledger', path: '/wallet', icon: WalletIcon },
-    { name: 'Creator Studio', path: '/creator', icon: Code2 },
-    { name: 'Admin', path: '/admin', icon: ShieldCheck, adminOnly: true },
-  ];
-
-  const handleQuickSwitch = async (email, pass) => {
-    try {
-      await quickSwitchUser(email, pass);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  // Admin gets STRICTLY the three requested nav bars; all other nav bars are removed
+  const navItems = user?.role === 'admin'
+    ? [
+        { name: 'Listing', path: '/admin?tab=listing', icon: Layers },
+        { name: 'Moderation queue', path: '/admin?tab=moderation', icon: Clock },
+        { name: 'Earnings', path: '/admin?tab=earnings', icon: TrendingUp },
+      ]
+    : [
+        { name: 'Dashboard', path: '/dashboard', icon: Layers },
+        { name: 'Marketplace', path: '/marketplace', icon: Cpu },
+        { name: 'Agent Playground', path: '/playground', icon: Sparkles },
+        { name: 'My Agents', path: '/agents', icon: Bot },
+        { name: 'Wallet & Ledger', path: '/wallet', icon: WalletIcon },
+        { name: 'Creator Studio', path: '/creator', icon: Code2 },
+      ];
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white">
@@ -56,7 +56,7 @@ export const Layout = ({ children }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-8">
-            <Link to="/" className="flex items-center gap-2.5 group">
+            <Link to={user?.role === 'admin' ? '/admin?tab=listing' : '/'} className="flex items-center gap-2.5 group">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 p-[1px] shadow-lg shadow-indigo-500/20">
                 <div className="w-full h-full bg-slate-950 rounded-[11px] flex items-center justify-center group-hover:bg-slate-900 transition">
                   <Coins className="w-5 h-5 text-indigo-400 group-hover:scale-110 transition duration-200" />
@@ -75,8 +75,8 @@ export const Layout = ({ children }) => {
             {/* Navigation tabs */}
             <nav className="hidden md:flex items-center gap-1">
               {navItems.map((item) => {
-                if (item.adminOnly && user?.role !== 'admin') return null;
-                const isActive = location.pathname === item.path;
+                const currentFull = location.pathname + location.search;
+                const isActive = location.pathname === item.path || currentFull === item.path;
                 const Icon = item.icon;
                 return (
                   <Link
@@ -100,55 +100,26 @@ export const Layout = ({ children }) => {
           <div className="flex items-center gap-3">
             {user ? (
               <>
-                {/* Wallet Balance Pill */}
-                <Link
-                  to="/wallet"
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition group shadow-sm"
-                >
-                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-xs text-slate-400 font-medium">Balance:</span>
-                  <span className="text-sm font-semibold text-emerald-400 font-mono">
-                    ${walletBalance}
-                  </span>
-                  {user.role !== 'admin' && location.pathname !== '/admin' && (
+                {/* Wallet Balance Pill (hidden for admin) */}
+                {user.role !== 'admin' && (
+                  <Link
+                    to="/wallet"
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition group shadow-sm"
+                  >
+                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="text-xs text-slate-400 font-medium">Balance:</span>
+                    <span className="text-sm font-semibold text-emerald-400 font-mono">
+                      ${walletBalance}
+                    </span>
                     <span className="text-[10px] bg-indigo-500/10 text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-500/20 group-hover:bg-indigo-500/20">
                       + Top Up
                     </span>
-                  )}
-                </Link>
+                  </Link>
+                )}
 
-                {/* Quick Role Switcher for Demo */}
-                <div className="relative group">
-                  <button className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 transition">
-                    <span className="capitalize">{user.role}</span>
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
-                  </button>
-                  <div className="absolute right-0 mt-1.5 w-52 bg-slate-900 border border-slate-800 rounded-xl shadow-xl py-1.5 hidden group-hover:block z-50">
-                    <div className="px-3 py-1 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                      Switch Demo Role
-                    </div>
-                    <button
-                      onClick={() => handleQuickSwitch('consumer@tooltoll.io', 'ConsumerPass123!')}
-                      className="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:bg-indigo-950/50 hover:text-indigo-300 flex items-center justify-between"
-                    >
-                      <span>Consumer (Agent Owner)</span>
-                      {user.role === 'consumer' && <Badge variant="success">Active</Badge>}
-                    </button>
-                    <button
-                      onClick={() => handleQuickSwitch('creator@tooltoll.io', 'CreatorPass123!')}
-                      className="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:bg-indigo-950/50 hover:text-indigo-300 flex items-center justify-between"
-                    >
-                      <span>API Creator</span>
-                      {user.role === 'creator' && <Badge variant="purple">Active</Badge>}
-                    </button>
-                    <button
-                      onClick={() => handleQuickSwitch('admin@tooltoll.io', 'AdminPass123!')}
-                      className="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:bg-indigo-950/50 hover:text-indigo-300 flex items-center justify-between"
-                    >
-                      <span>Admin Moderation</span>
-                      {user.role === 'admin' && <Badge variant="cyan">Active</Badge>}
-                    </button>
-                  </div>
+                {/* User Role Badge (Role switching removed) */}
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-300">
+                  <span className="capitalize">{user.role}</span>
                 </div>
 
                 {/* User menu / Logout */}

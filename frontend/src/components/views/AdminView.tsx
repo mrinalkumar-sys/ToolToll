@@ -30,11 +30,27 @@ import {
   ChevronUp,
 } from 'lucide-react';
 
-export const AdminView: React.FC = () => {
+export interface AdminViewProps {
+  activeSection?: 'listing' | 'moderation' | 'earnings';
+  onSelectSection?: (section: 'listing' | 'moderation' | 'earnings') => void;
+}
+
+export const AdminView: React.FC<AdminViewProps> = ({
+  activeSection,
+  onSelectSection,
+}) => {
   const { user, loginDemo } = useAuth();
   
   // Three primary navigation tabs requested: 1) Listing, 2) Moderation queue, 3) Earnings
-  const [activeTab, setActiveTab] = useState<'listing' | 'moderation' | 'earnings'>('listing');
+  const [internalTab, setInternalTab] = useState<'listing' | 'moderation' | 'earnings'>('listing');
+  const activeTab = activeSection || internalTab;
+
+  const handleTabChange = (tab: 'listing' | 'moderation' | 'earnings') => {
+    setInternalTab(tab);
+    if (onSelectSection) {
+      onSelectSection(tab);
+    }
+  };
   
   // Listing sub-tab: 'creators' or 'consumers'
   const [listingSubTab, setListingSubTab] = useState<'creators' | 'consumers'>('creators');
@@ -127,7 +143,8 @@ export const AdminView: React.FC = () => {
     }
   };
 
-  if (!user?.isAdmin) {
+  const isUserAdmin = Boolean(user?.isAdmin || String((user as any)?.role).toLowerCase() === 'admin');
+  if (!isUserAdmin) {
     return (
       <div className="section-dark" style={{ minHeight: '85vh', paddingTop: '80px', textAlign: 'center' }}>
         <div className="container-editorial" style={{ maxWidth: '580px' }}>
@@ -260,7 +277,7 @@ export const AdminView: React.FC = () => {
               gap: '8px',
             }}
             onClick={() => {
-              setActiveTab('listing');
+              handleTabChange('listing');
               setSearchQuery('');
             }}
           >
@@ -285,7 +302,7 @@ export const AdminView: React.FC = () => {
               gap: '8px',
             }}
             onClick={() => {
-              setActiveTab('moderation');
+              handleTabChange('moderation');
               setSearchQuery('');
             }}
           >
@@ -325,7 +342,7 @@ export const AdminView: React.FC = () => {
               gap: '8px',
             }}
             onClick={() => {
-              setActiveTab('earnings');
+              handleTabChange('earnings');
               setSearchQuery('');
             }}
           >

@@ -24,24 +24,51 @@ function MainApp() {
   const [authPromptAction, setAuthPromptAction] = useState<string | undefined>(undefined);
   const [topupModalOpen, setTopupModalOpen] = useState(false);
 
+  const isActualAdmin = Boolean(
+    user?.isAdmin || String((user as any)?.role).toLowerCase() === 'admin'
+  );
+
   // Securely enforce role and auth boundaries across navigation
   useEffect(() => {
     if (!isAuthenticated) {
-      if (currentTab === 'admin' || currentTab === 'creator' || currentTab === 'wallet' || currentTab === 'agents') {
+      if (
+        currentTab === 'admin' ||
+        currentTab === 'admin-listing' ||
+        currentTab === 'admin-moderation' ||
+        currentTab === 'admin-earnings' ||
+        currentTab === 'creator' ||
+        currentTab === 'wallet' ||
+        currentTab === 'agents'
+      ) {
         setCurrentTab('marketplace');
       }
+    } else if (isActualAdmin) {
+      // Admin only has the 3 tabs: admin-listing, admin-moderation, admin-earnings
+      if (
+        currentTab !== 'admin-listing' &&
+        currentTab !== 'admin-moderation' &&
+        currentTab !== 'admin-earnings'
+      ) {
+        setCurrentTab('admin-listing');
+      }
     } else {
-      if (currentTab === 'admin' && !user?.isAdmin) {
-        setCurrentTab(activeRole === 'creator' ? 'creator' : 'marketplace');
-      } else if (currentTab === 'creator' && activeRole !== 'creator' && !user?.isAdmin) {
+      // Non-admins cannot access admin tabs
+      if (
+        currentTab === 'admin' ||
+        currentTab === 'admin-listing' ||
+        currentTab === 'admin-moderation' ||
+        currentTab === 'admin-earnings'
+      ) {
         setCurrentTab('marketplace');
-      } else if (currentTab === 'agents' && activeRole === 'creator' && !user?.isConsumer && !user?.isAdmin) {
+      } else if (currentTab === 'creator' && activeRole !== 'creator') {
+        setCurrentTab('marketplace');
+      } else if (currentTab === 'agents' && activeRole === 'creator' && !user?.isConsumer) {
         setCurrentTab('creator');
-      } else if (currentTab === 'wallet' && activeRole === 'creator' && !user?.isAdmin) {
+      } else if (currentTab === 'wallet' && activeRole === 'creator') {
         setCurrentTab('creator');
       }
     }
-  }, [isAuthenticated, activeRole, user, currentTab]);
+  }, [isAuthenticated, isActualAdmin, activeRole, user, currentTab]);
 
   const handleSelectToolForPlayground = (tool: Tool) => {
     setSelectedToolForPlayground(tool);
@@ -94,8 +121,24 @@ function MainApp() {
           <WalletView onOpenTopup={() => setTopupModalOpen(true)} />
         )}
 
-        {currentTab === 'admin' && isAuthenticated && user?.isAdmin && (
-          <AdminView />
+        {(currentTab === 'admin' ||
+          currentTab === 'admin-listing' ||
+          currentTab === 'admin-moderation' ||
+          currentTab === 'admin-earnings') && (
+          <AdminView
+            activeSection={
+              currentTab === 'admin-moderation'
+                ? 'moderation'
+                : currentTab === 'admin-earnings'
+                ? 'earnings'
+                : 'listing'
+            }
+            onSelectSection={(section) => {
+              if (section === 'listing') setCurrentTab('admin-listing');
+              else if (section === 'moderation') setCurrentTab('admin-moderation');
+              else if (section === 'earnings') setCurrentTab('admin-earnings');
+            }}
+          />
         )}
 
         {currentTab === 'ai' && (

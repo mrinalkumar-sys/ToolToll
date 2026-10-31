@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { UserRole } from '../../types';
+import { useAuth } from '../../context/AuthContext';
 import { ChevronDown, Bot, Hammer, Shield, LogOut } from 'lucide-react';
 
 interface RoleSelectorProps {
@@ -12,6 +13,7 @@ interface RoleSelectorProps {
   onLogout?: () => void;
   isLoggingOut?: boolean;
   onSelectRole?: (role: UserRole) => void;
+  onSelectTab?: (tab: any) => void;
 }
 
 export const RoleSelector: React.FC<RoleSelectorProps> = ({
@@ -23,10 +25,10 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
   onLogout,
   isLoggingOut = false,
 }) => {
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const [focusedIndex, setFocusedIndex] = useState<number>(-1);
 
   // Determine actual role from session
   const roleId: UserRole =
@@ -43,7 +45,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
         return {
           id: 'creator' as UserRole,
           label: 'Role: Creator',
-          sublabel: 'API publisher & earnings studio',
+          sublabel: 'API Developer',
           icon: Hammer,
           dotColor: '#FF5500', // Brand Orange
         };
@@ -51,7 +53,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
         return {
           id: 'admin' as UserRole,
           label: 'Role: Admin',
-          sublabel: 'Governance, moderation & solvency',
+          sublabel: 'Platform Administrator',
           icon: Shield,
           dotColor: '#38BDF8', // Sky blue
         };
@@ -60,7 +62,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
         return {
           id: 'consumer' as UserRole,
           label: 'Role: Consumer',
-          sublabel: 'Agent owner & tool consumer',
+          sublabel: 'Agent Owner',
           icon: Bot,
           dotColor: '#10B981', // Emerald
         };
@@ -83,84 +85,42 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
     };
   }, [isOpen]);
 
-  // Keyboard navigation
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (disabled) return;
-
-    if (!isOpen) {
-      if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        setIsOpen(true);
-        setFocusedIndex(0);
-      }
-      return;
-    }
-
-    switch (e.key) {
-      case 'ArrowDown':
-      case 'ArrowUp':
-        e.preventDefault();
-        setFocusedIndex(0);
-        break;
-      case 'Enter':
-      case ' ':
-        e.preventDefault();
-        if (onLogout && !isLoggingOut) {
-          setIsOpen(false);
-          onLogout();
-        }
-        break;
-      case 'Escape':
-        e.preventDefault();
-        setIsOpen(false);
-        triggerRef.current?.focus();
-        break;
-      case 'Tab':
-        setIsOpen(false);
-        break;
-    }
-  };
+  const Icon = currentRoleObj.icon;
 
   return (
     <div
       ref={containerRef}
       className="role-selector-container"
       style={{ position: 'relative', display: 'inline-block' }}
-      onKeyDown={handleKeyDown}
     >
-      {/* Trigger Button - displays current actual role indicator */}
+      {/* Role Indicator Trigger Button */}
       <button
         ref={triggerRef}
         type="button"
-        className="role-selector-trigger"
-        onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
+        onClick={() => setIsOpen(!isOpen)}
+        className="btn btn-secondary btn-sm role-selector-trigger"
         aria-haspopup="true"
         aria-expanded={isOpen}
-        aria-label={`Current role: ${currentRoleObj.label}`}
         style={{
-          display: 'flex',
+          display: 'inline-flex',
           alignItems: 'center',
           gap: '8px',
-          background: '#111827',
-          color: '#F3F4F6',
-          border: isOpen ? '1px solid var(--brand-orange)' : '1px solid rgba(255, 255, 255, 0.16)',
+          padding: '6px 12px',
           borderRadius: 'var(--radius-xs)',
-          padding: '5px 12px',
           fontSize: '0.80rem',
-          whiteSpace: 'nowrap',
-          flexShrink: 0,
-          fontWeight: 600,
+          fontWeight: 700,
+          background: 'rgba(255, 255, 255, 0.04)',
+          border: '1px solid var(--border-dark)',
           cursor: disabled ? 'not-allowed' : 'pointer',
-          transition: 'all 0.18s ease',
-          boxShadow: isOpen ? '0 0 0 3px rgba(255, 85, 0, 0.2)' : 'none',
-          userSelect: 'none',
+          opacity: disabled ? 0.6 : 1,
         }}
       >
+        <Icon size={14} color={currentRoleObj.dotColor} />
         <span
           style={{
-            width: '7px',
-            height: '7px',
+            width: '6px',
+            height: '6px',
             borderRadius: '50%',
             backgroundColor: currentRoleObj.dotColor,
             flexShrink: 0,
@@ -181,8 +141,8 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
         />
       </button>
 
-      {/* Popover Dropdown Menu (Contains only Logout option) */}
-      {isOpen && onLogout && (
+      {/* Popover Dropdown Menu (User session profile & Sign Out - no role switching) */}
+      {isOpen && (
         <div
           role="menu"
           aria-label="User session menu"
@@ -191,89 +151,99 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
             position: 'absolute',
             top: 'calc(100% + 6px)',
             right: 0,
-            minWidth: '200px',
+            minWidth: '220px',
             background: '#111827',
             border: '1px solid rgba(255, 255, 255, 0.14)',
             borderRadius: 'var(--radius-sm)',
             boxShadow: '0 12px 32px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05)',
             zIndex: 1050,
-            padding: '6px',
+            padding: '10px 12px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '3px',
+            gap: '8px',
             animation: 'fadeIn 0.15s ease-out',
           }}
         >
-          <button
-            type="button"
-            role="menuitem"
-            disabled={isLoggingOut}
-            className={`role-option-btn role-logout-btn ${focusedIndex === 0 ? 'focused' : ''}`}
-            onClick={() => {
-              setIsOpen(false);
-              onLogout();
-            }}
-            onMouseEnter={() => setFocusedIndex(0)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '9px 12px',
-              borderRadius: 'var(--radius-xs)',
-              border: focusedIndex === 0 ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid transparent',
-              background: focusedIndex === 0
-                ? 'rgba(239, 68, 68, 0.14)'
-                : 'transparent',
-              color: '#F87171',
-              cursor: isLoggingOut ? 'wait' : 'pointer',
-              textAlign: 'left',
-              width: '100%',
-              transition: 'background 0.15s ease, border-color 0.15s ease',
-              outline: 'none',
-              opacity: isLoggingOut ? 0.6 : 1,
-            }}
-          >
+          {/* User Details */}
+          <div>
             <div
               style={{
-                width: '24px',
-                height: '24px',
-                borderRadius: '4px',
-                background: 'rgba(239, 68, 68, 0.14)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
+                fontSize: '0.85rem',
+                fontWeight: 800,
+                color: '#FFFFFF',
+                lineHeight: 1.2,
               }}
             >
-              <LogOut size={13} color="#EF4444" strokeWidth={2.2} />
+              {user?.name || user?.email || 'User'}
             </div>
+            <div
+              style={{
+                fontSize: '0.72rem',
+                color: 'var(--text-dark-muted)',
+                marginTop: '2px',
+                wordBreak: 'break-all',
+              }}
+            >
+              {user?.email}
+            </div>
+            <div style={{ marginTop: '6px' }}>
+              <span
+                className={`badge ${
+                  roleId === 'admin'
+                    ? 'badge-cyan'
+                    : roleId === 'creator'
+                    ? 'badge-orange'
+                    : 'badge-emerald'
+                }`}
+                style={{ fontSize: '0.64rem', padding: '2px 7px' }}
+              >
+                {currentRoleObj.sublabel}
+              </span>
+            </div>
+          </div>
 
-            <div style={{ flex: 1, minWidth: 0 }}>
+          {onLogout && (
+            <>
               <div
                 style={{
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
+                  height: '1px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                  margin: '4px 0',
+                }}
+              />
+
+              <button
+                type="button"
+                role="menuitem"
+                disabled={isLoggingOut}
+                className="role-option-btn role-logout-btn"
+                onClick={() => {
+                  setIsOpen(false);
+                  onLogout();
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '7px 8px',
+                  borderRadius: 'var(--radius-xs)',
+                  border: '1px solid transparent',
+                  background: 'rgba(239, 68, 68, 0.08)',
                   color: '#F87171',
-                  lineHeight: 1.2,
+                  cursor: isLoggingOut ? 'wait' : 'pointer',
+                  textAlign: 'left',
+                  width: '100%',
+                  outline: 'none',
+                  opacity: isLoggingOut ? 0.6 : 1,
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
                 }}
               >
-                {isLoggingOut ? 'Signing out...' : 'Logout'}
-              </div>
-              <div
-                style={{
-                  fontSize: '0.68rem',
-                  color: 'rgba(248, 113, 113, 0.72)',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  lineHeight: 1.2,
-                  marginTop: '2px',
-                }}
-              >
-                End authenticated session
-              </div>
-            </div>
-          </button>
+                <LogOut size={13} color="#EF4444" strokeWidth={2.2} />
+                <span>{isLoggingOut ? 'Signing out...' : 'Sign Out'}</span>
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>
