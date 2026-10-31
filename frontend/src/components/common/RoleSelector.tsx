@@ -1,24 +1,24 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { UserRole } from '../../types';
-import { ChevronDown, Check, Bot, Hammer, Shield, LogOut } from 'lucide-react';
+import { ChevronDown, Bot, Hammer, Shield, LogOut } from 'lucide-react';
 
 interface RoleSelectorProps {
-  activeRole: UserRole;
-  onSelectRole: (role: UserRole) => void;
-  isAdmin: boolean;
+  actualRole?: UserRole;
+  activeRole?: UserRole;
+  isAdmin?: boolean;
   isCreator?: boolean;
   isConsumer?: boolean;
   disabled?: boolean;
   onLogout?: () => void;
   isLoggingOut?: boolean;
+  onSelectRole?: (role: UserRole) => void;
 }
 
 export const RoleSelector: React.FC<RoleSelectorProps> = ({
+  actualRole,
   activeRole,
-  onSelectRole,
   isAdmin,
   isCreator,
-  isConsumer,
   disabled = false,
   onLogout,
   isLoggingOut = false,
@@ -28,55 +28,44 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
 
-  const roles: Array<{
-    id: UserRole;
-    label: string;
-    sublabel: string;
-    icon: React.FC<{ size?: number; color?: string }>;
-    dotColor: string;
-  }> = [];
+  // Determine actual role from session
+  const roleId: UserRole =
+    actualRole ||
+    (isAdmin
+      ? 'admin'
+      : isCreator
+      ? 'creator'
+      : activeRole || 'consumer');
 
-  // Strictly filter roles according to verified user authorizations
-  if (isConsumer ?? true) {
-    roles.push({
-      id: 'consumer',
-      label: 'Role: Consumer',
-      sublabel: 'Agent owner & tool consumer',
-      icon: Bot,
-      dotColor: '#10B981', // Emerald
-    });
-  }
-
-  if (isCreator) {
-    roles.push({
-      id: 'creator',
-      label: 'Role: Creator',
-      sublabel: 'API publisher & earnings studio',
-      icon: Hammer,
-      dotColor: '#FF5500', // Brand Orange
-    });
-  }
-
-  if (isAdmin) {
-    roles.push({
-      id: 'admin',
-      label: 'Role: Admin',
-      sublabel: 'Governance, moderation & solvency',
-      icon: Shield,
-      dotColor: '#38BDF8', // Sky blue
-    });
-  }
-
-  // Fallback safe entry
-  if (roles.length === 0) {
-    roles.push({
-      id: activeRole || 'consumer',
-      label: `Role: ${activeRole.toUpperCase()}`,
-      sublabel: 'Authenticated session',
-      icon: Bot,
-      dotColor: '#10B981',
-    });
-  }
+  const currentRoleObj = (() => {
+    switch (roleId) {
+      case 'creator':
+        return {
+          id: 'creator' as UserRole,
+          label: 'Role: Creator',
+          sublabel: 'API publisher & earnings studio',
+          icon: Hammer,
+          dotColor: '#FF5500', // Brand Orange
+        };
+      case 'admin':
+        return {
+          id: 'admin' as UserRole,
+          label: 'Role: Admin',
+          sublabel: 'Governance, moderation & solvency',
+          icon: Shield,
+          dotColor: '#38BDF8', // Sky blue
+        };
+      case 'consumer':
+      default:
+        return {
+          id: 'consumer' as UserRole,
+          label: 'Role: Consumer',
+          sublabel: 'Agent owner & tool consumer',
+          icon: Bot,
+          dotColor: '#10B981', // Emerald
+        };
+    }
+  })();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -102,31 +91,21 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         setIsOpen(true);
-        const currentIndex = roles.findIndex((r) => r.id === activeRole);
-        setFocusedIndex(currentIndex >= 0 ? currentIndex : 0);
+        setFocusedIndex(0);
       }
       return;
     }
 
-    const totalItems = onLogout ? roles.length + 1 : roles.length;
-
     switch (e.key) {
       case 'ArrowDown':
-        e.preventDefault();
-        setFocusedIndex((prev) => (prev + 1) % totalItems);
-        break;
       case 'ArrowUp':
         e.preventDefault();
-        setFocusedIndex((prev) => (prev - 1 + totalItems) % totalItems);
+        setFocusedIndex(0);
         break;
       case 'Enter':
       case ' ':
         e.preventDefault();
-        if (focusedIndex >= 0 && focusedIndex < roles.length) {
-          onSelectRole(roles[focusedIndex].id);
-          setIsOpen(false);
-          triggerRef.current?.focus();
-        } else if (focusedIndex === roles.length && onLogout && !isLoggingOut) {
+        if (onLogout && !isLoggingOut) {
           setIsOpen(false);
           onLogout();
         }
@@ -142,8 +121,6 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
     }
   };
 
-  const currentRoleObj = roles.find((r) => r.id === activeRole) || roles[0];
-
   return (
     <div
       ref={containerRef}
@@ -151,16 +128,16 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
       style={{ position: 'relative', display: 'inline-block' }}
       onKeyDown={handleKeyDown}
     >
-      {/* Trigger Button */}
+      {/* Trigger Button - displays current actual role indicator */}
       <button
         ref={triggerRef}
         type="button"
         className="role-selector-trigger"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        aria-haspopup="listbox"
+        aria-haspopup="true"
         aria-expanded={isOpen}
-        aria-label={`Select active role. Current role is ${currentRoleObj.label}`}
+        aria-label={`Current role: ${currentRoleObj.label}`}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -204,18 +181,18 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
         />
       </button>
 
-      {/* Popover Dropdown Menu */}
-      {isOpen && (
+      {/* Popover Dropdown Menu (Contains only Logout option) */}
+      {isOpen && onLogout && (
         <div
-          role="listbox"
-          aria-label="Available user roles"
+          role="menu"
+          aria-label="User session menu"
           className="role-selector-menu"
           style={{
             position: 'absolute',
             top: 'calc(100% + 6px)',
             right: 0,
-            minWidth: '220px',
-            background: '#111827', // Dark navy background
+            minWidth: '200px',
+            background: '#111827',
             border: '1px solid rgba(255, 255, 255, 0.14)',
             borderRadius: 'var(--radius-sm)',
             boxShadow: '0 12px 32px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05)',
@@ -227,199 +204,76 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
             animation: 'fadeIn 0.15s ease-out',
           }}
         >
-          <div
+          <button
+            type="button"
+            role="menuitem"
+            disabled={isLoggingOut}
+            className={`role-option-btn role-logout-btn ${focusedIndex === 0 ? 'focused' : ''}`}
+            onClick={() => {
+              setIsOpen(false);
+              onLogout();
+            }}
+            onMouseEnter={() => setFocusedIndex(0)}
             style={{
-              padding: '6px 10px 4px',
-              fontSize: '0.64rem',
-              fontWeight: 800,
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              color: '#9CA3AF',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-              marginBottom: '3px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '9px 12px',
+              borderRadius: 'var(--radius-xs)',
+              border: focusedIndex === 0 ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid transparent',
+              background: focusedIndex === 0
+                ? 'rgba(239, 68, 68, 0.14)'
+                : 'transparent',
+              color: '#F87171',
+              cursor: isLoggingOut ? 'wait' : 'pointer',
+              textAlign: 'left',
+              width: '100%',
+              transition: 'background 0.15s ease, border-color 0.15s ease',
+              outline: 'none',
+              opacity: isLoggingOut ? 0.6 : 1,
             }}
           >
-            {roles.length > 1 ? 'Switch Active Role' : 'Authorized Role'}
-          </div>
+            <div
+              style={{
+                width: '24px',
+                height: '24px',
+                borderRadius: '4px',
+                background: 'rgba(239, 68, 68, 0.14)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <LogOut size={13} color="#EF4444" strokeWidth={2.2} />
+            </div>
 
-          {roles.map((role, idx) => {
-            const isSelected = role.id === activeRole;
-            const isFocused = idx === focusedIndex;
-            const Icon = role.icon;
-
-            return (
-              <button
-                key={role.id}
-                role="option"
-                aria-selected={isSelected}
-                type="button"
-                className={`role-option-btn ${isSelected ? 'selected' : ''}`}
-                onClick={() => {
-                  onSelectRole(role.id);
-                  setIsOpen(false);
-                  triggerRef.current?.focus();
-                }}
-                onMouseEnter={() => setFocusedIndex(idx)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '9px 12px',
-                  borderRadius: 'var(--radius-xs)',
-                  border: isSelected ? '1px solid rgba(255, 85, 0, 0.35)' : '1px solid transparent',
-                  background: isSelected
-                    ? 'rgba(255, 85, 0, 0.12)'
-                    : isFocused
-                    ? '#1F2937' // Hover / keyboard focus dark navy
-                    : 'transparent',
-                  color: '#FFFFFF',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  width: '100%',
-                  transition: 'background 0.15s ease, border-color 0.15s ease',
-                  outline: isFocused && !isSelected ? '1px solid #374151' : 'none',
-                }}
-              >
-                <div
-                  style={{
-                    width: '24px',
-                    height: '24px',
-                    borderRadius: '4px',
-                    background: isSelected ? 'rgba(255, 85, 0, 0.2)' : '#1F2937',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <Icon size={13} color={isSelected ? 'var(--brand-orange)' : '#D1D5DB'} />
-                </div>
-
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div
-                    style={{
-                      fontSize: '0.82rem',
-                      fontWeight: isSelected ? 700 : 600,
-                      color: isSelected ? '#FFFFFF' : '#E5E7EB',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                    }}
-                  >
-                    <span>{role.label.replace('Role: ', '')}</span>
-                    <span
-                      style={{
-                        width: '5px',
-                        height: '5px',
-                        borderRadius: '50%',
-                        backgroundColor: role.dotColor,
-                      }}
-                    />
-                  </div>
-                  <div
-                    style={{
-                      fontSize: '0.68rem',
-                      color: isSelected ? '#FCA5A5' : '#9CA3AF',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
-                  >
-                    {role.sublabel}
-                  </div>
-                </div>
-
-                {isSelected && (
-                  <Check size={14} color="var(--brand-orange)" strokeWidth={2.5} style={{ flexShrink: 0 }} />
-                )}
-              </button>
-            );
-          })}
-
-          {/* Subtle Divider & Functional Logout Option */}
-          {onLogout && (
-            <>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div
                 style={{
-                  height: '1px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                  margin: '4px 0',
-                }}
-              />
-
-              <button
-                type="button"
-                role="option"
-                aria-selected={false}
-                disabled={isLoggingOut}
-                className={`role-option-btn role-logout-btn ${focusedIndex === roles.length ? 'focused' : ''}`}
-                onClick={() => {
-                  setIsOpen(false);
-                  onLogout();
-                }}
-                onMouseEnter={() => setFocusedIndex(roles.length)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '9px 12px',
-                  borderRadius: 'var(--radius-xs)',
-                  border: focusedIndex === roles.length ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid transparent',
-                  background: focusedIndex === roles.length
-                    ? 'rgba(239, 68, 68, 0.14)'
-                    : 'transparent',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
                   color: '#F87171',
-                  cursor: isLoggingOut ? 'wait' : 'pointer',
-                  textAlign: 'left',
-                  width: '100%',
-                  transition: 'background 0.15s ease, border-color 0.15s ease',
-                  outline: 'none',
-                  opacity: isLoggingOut ? 0.6 : 1,
+                  lineHeight: 1.2,
                 }}
               >
-                <div
-                  style={{
-                    width: '24px',
-                    height: '24px',
-                    borderRadius: '4px',
-                    background: 'rgba(239, 68, 68, 0.14)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <LogOut size={13} color="#EF4444" strokeWidth={2.2} />
-                </div>
-
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div
-                    style={{
-                      fontSize: '0.82rem',
-                      fontWeight: 700,
-                      color: '#F87171',
-                      lineHeight: 1.2,
-                    }}
-                  >
-                    {isLoggingOut ? 'Signing out...' : 'Logout'}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: '0.68rem',
-                      color: 'rgba(248, 113, 113, 0.72)',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      lineHeight: 1.2,
-                      marginTop: '2px',
-                    }}
-                  >
-                    End authenticated session
-                  </div>
-                </div>
-              </button>
-            </>
-          )}
+                {isLoggingOut ? 'Signing out...' : 'Logout'}
+              </div>
+              <div
+                style={{
+                  fontSize: '0.68rem',
+                  color: 'rgba(248, 113, 113, 0.72)',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  lineHeight: 1.2,
+                  marginTop: '2px',
+                }}
+              >
+                End authenticated session
+              </div>
+            </div>
+          </button>
         </div>
       )}
     </div>

@@ -12,17 +12,21 @@ import { NotFoundError, ForbiddenError, BadRequestError, UnauthorizedError } fro
 export const toolRouter = Router();
 
 const createToolSchema = z.object({
-  name: z.string().min(2, 'Name is required').max(100),
-  shortDescription: z.string().min(5, 'Short description is required').max(200),
-  detailedDescription: z.string().min(10, 'Detailed description is required'),
+  name: z.string().min(2, 'API Name is required (at least 2 characters)').max(100),
+  shortDescription: z.string().max(250).optional(),
+  detailedDescription: z.string().optional(),
+  description: z.string().optional(),
   category: z.string().min(2, 'Category is required'),
   tags: z.array(z.string()).default([]),
-  baseUrl: z.string().url('Valid Base URL is required'),
+  baseUrl: z.string().url('Valid Base URL is required (e.g. https://api.yourdomain.com)'),
   endpointPath: z.string().startsWith('/', 'Endpoint path must start with /'),
-  httpMethod: z.enum(['GET', 'POST', 'PUT', 'DELETE']).default('POST'),
+  httpMethod: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']).default('POST'),
+  version: z.union([z.string(), z.number()]).transform((v) => parseInt(String(v), 10) || 1).default(1),
   inputSchema: z.record(z.unknown()),
+  exampleRequest: z.record(z.unknown()).optional(),
   outputSchema: z.record(z.unknown()).optional(),
-  authMethod: z.enum(['NONE', 'API_KEY_HEADER', 'BEARER_TOKEN']).default('NONE'),
+  exampleResponse: z.record(z.unknown()).optional(),
+  authMethod: z.enum(['NONE', 'API_KEY_HEADER', 'BEARER_TOKEN', 'BASIC_AUTH']).default('NONE'),
   authHeaderName: z.string().optional(),
   upstreamSecret: z.string().optional(),
   priceMicroUsd: z
@@ -36,12 +40,39 @@ const createToolSchema = z.object({
       }
     }, { message: 'priceMicroUsd must be a non-negative integer' })
     .transform((v) => BigInt(v))
-    .default(1000n), // $0.001
+    .default(1000n),
   timeoutMs: z.number().int().min(500).max(30000).default(15000),
   rateLimitPerMinute: z.number().int().min(1).default(60),
   terms: z.string().optional(),
   supportContact: z.string().optional(),
   isDemo: z.boolean().optional().default(false),
+});
+
+const createEndpointSchema = z.object({
+  name: z.string().min(2, 'Endpoint name is required (min 2 characters)').max(100),
+  endpointPath: z.string().startsWith('/', 'Endpoint path must start with / (e.g. /v1/run)'),
+  httpMethod: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']).default('POST'),
+  description: z.string().optional(),
+  inputSchema: z.record(z.unknown()),
+  exampleRequest: z.record(z.unknown()).optional(),
+  outputSchema: z.record(z.unknown()).optional(),
+  exampleResponse: z.record(z.unknown()).optional(),
+  authMethod: z.enum(['NONE', 'API_KEY_HEADER', 'BEARER_TOKEN', 'BASIC_AUTH']).default('NONE'),
+  authHeaderName: z.string().optional(),
+  upstreamSecret: z.string().optional(),
+  priceMicroUsd: z
+    .union([z.string(), z.number(), z.bigint()])
+    .refine((v) => {
+      try {
+        const b = BigInt(v);
+        return b >= 0n;
+      } catch {
+        return false;
+      }
+    }, { message: 'Price per call must be a positive integer in micro-USD' })
+    .transform((v) => BigInt(v))
+    .default(1000n),
+  timeoutMs: z.number().int().min(500).max(30000).default(15000),
 });
 
 // Helper to compute measured metrics from real ToolCall history (PRD 7.3)
@@ -98,22 +129,35 @@ toolRouter.get('/', optionalAuth, async (req: Request, res: Response, next) => {
 
     const tools = await prisma.tool.findMany({
       where,
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        shortDescription: true,
-        detailedDescription: true,
-        category: true,
-        tags: true,
-        httpMethod: true,
-        priceMicroUsd: true,
-        currency: true,
-        timeoutMs: true,
-        status: true,
-        version: true,
-        isDemo: true,
-        createdAt: true,
+      include: {
+        creator: { select: { id: true, name: true, email: true } },
+        endpoints: {
+          orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+          select: {
+            id: true,
+            toolId: true,
+            name: true,
+            description: true,
+            endpointPath: true,
+            httpMethod: true,
+            inputSchema: true,
+            exampleRequest: true,
+            outputSchema: true,
+            exampleResponse: true,
+            authMethod: true,
+            authHeaderName: true,
+            priceMicroUsd: true,
+            currency: true,
+            timeoutMs: true,
+            status: true,
+            isPrimary: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+        _count: {
+          select: { endpoints: true },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -121,9 +165,15 @@ toolRouter.get('/', optionalAuth, async (req: Request, res: Response, next) => {
     const enriched = await Promise.all(
       tools.map(async (t) => {
         const metrics = await getToolMetrics(t.id);
+        const { encryptedSecret, secretKeyVersion, ...safeTool } = t as any;
         return {
-          ...t,
-          priceMicroUsd: t.priceMicroUsd.toString(),
+          ...safeTool,
+          priceMicroUsd: safeTool.priceMicroUsd.toString(),
+          endpointCount: safeTool._count?.endpoints || safeTool.endpoints?.length || 0,
+          endpoints: (safeTool.endpoints || []).map((ep: any) => ({
+            ...ep,
+            priceMicroUsd: ep.priceMicroUsd.toString(),
+          })),
           metrics,
         };
       })
@@ -211,10 +261,35 @@ toolRouter.get('/:id', optionalAuth, async (req: Request, res: Response, next) =
       where: { id: req.params.id },
       include: {
         creator: { select: { id: true, name: true, email: true } },
+        endpoints: {
+          orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+          select: {
+            id: true,
+            toolId: true,
+            name: true,
+            description: true,
+            endpointPath: true,
+            httpMethod: true,
+            inputSchema: true,
+            exampleRequest: true,
+            outputSchema: true,
+            exampleResponse: true,
+            authMethod: true,
+            authHeaderName: true,
+            priceMicroUsd: true,
+            currency: true,
+            timeoutMs: true,
+            status: true,
+            isPrimary: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
         versions: {
           orderBy: { version: 'desc' },
           select: { version: true, priceMicroUsd: true, createdAt: true },
         },
+        _count: { select: { endpoints: true } },
       },
     });
 
@@ -236,6 +311,11 @@ toolRouter.get('/:id', optionalAuth, async (req: Request, res: Response, next) =
     return sendSuccess(res, {
       ...safeTool,
       priceMicroUsd: safeTool.priceMicroUsd.toString(),
+      endpointCount: safeTool._count?.endpoints || safeTool.endpoints?.length || 0,
+      endpoints: (safeTool.endpoints || []).map((ep: any) => ({
+        ...ep,
+        priceMicroUsd: ep.priceMicroUsd.toString(),
+      })),
       metrics,
     });
   } catch (error) {
@@ -243,7 +323,7 @@ toolRouter.get('/:id', optionalAuth, async (req: Request, res: Response, next) =
   }
 });
 
-// POST /api/tools (Register new tool)
+// POST /api/tools (Register new API service and its initial endpoint — Phase 2)
 toolRouter.post('/', requireAuth, async (req: Request, res: Response, next) => {
   try {
     const parsed = createToolSchema.safeParse(req.body);
@@ -253,7 +333,6 @@ toolRouter.post('/', requireAuth, async (req: Request, res: Response, next) => {
 
     const data = parsed.data;
 
-    // Encrypt upstream secret if provided
     let encryptedSecret: string | null = null;
     let secretKeyVersion: string | null = null;
 
@@ -264,53 +343,98 @@ toolRouter.post('/', requireAuth, async (req: Request, res: Response, next) => {
     }
 
     const slug = `${data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now().toString(36)}`;
+    const shortDesc = data.shortDescription || data.description?.slice(0, 190) || `API service for ${data.name}`;
+    const detailedDesc = data.detailedDescription || data.description || shortDesc;
 
-    const tool = await prisma.tool.create({
-      data: {
-        creatorId: req.user!.userId,
-        name: data.name,
-        slug,
-        shortDescription: data.shortDescription,
-        detailedDescription: data.detailedDescription,
-        category: data.category,
-        tags: data.tags,
-        baseUrl: data.baseUrl,
-        endpointPath: data.endpointPath,
-        httpMethod: data.httpMethod,
-        inputSchema: data.inputSchema as object,
-        outputSchema: data.outputSchema as object | undefined,
-        authMethod: data.authMethod,
-        authHeaderName: data.authHeaderName,
-        encryptedSecret,
-        secretKeyVersion,
-        priceMicroUsd: data.priceMicroUsd,
-        timeoutMs: data.timeoutMs,
-        rateLimitPerMinute: data.rateLimitPerMinute,
-        terms: data.terms,
-        supportContact: data.supportContact,
-        status: data.isDemo ? 'APPROVED' : 'DRAFT',
-        isDemo: data.isDemo,
-      },
+    // Save the new API service and its initial endpoint in a transaction (Phase 2 & 5)
+    const result = await prisma.$transaction(async (tx) => {
+      const tool = await tx.tool.create({
+        data: {
+          creatorId: req.user!.userId,
+          name: data.name,
+          slug,
+          shortDescription: shortDesc,
+          detailedDescription: detailedDesc,
+          category: data.category,
+          tags: data.tags.length ? data.tags : [data.category.toLowerCase(), 'api'],
+          baseUrl: data.baseUrl,
+          endpointPath: data.endpointPath,
+          httpMethod: data.httpMethod,
+          inputSchema: data.inputSchema as object,
+          exampleRequest: data.exampleRequest as object | undefined,
+          outputSchema: data.outputSchema as object | undefined,
+          exampleResponse: data.exampleResponse as object | undefined,
+          authMethod: data.authMethod,
+          authHeaderName: data.authHeaderName,
+          encryptedSecret,
+          secretKeyVersion,
+          priceMicroUsd: data.priceMicroUsd,
+          timeoutMs: data.timeoutMs,
+          rateLimitPerMinute: data.rateLimitPerMinute,
+          terms: data.terms,
+          supportContact: data.supportContact,
+          status: data.isDemo ? 'APPROVED' : 'DRAFT',
+          version: data.version,
+          isDemo: data.isDemo,
+        },
+      });
+
+      await tx.toolVersion.create({
+        data: {
+          toolId: tool.id,
+          version: data.version,
+          inputSchema: data.inputSchema as object,
+          outputSchema: data.outputSchema as object | undefined,
+          priceMicroUsd: data.priceMicroUsd,
+          endpointPath: data.endpointPath,
+          httpMethod: data.httpMethod,
+          authMethod: data.authMethod,
+        },
+      });
+
+      const initialEndpoint = await tx.toolEndpoint.create({
+        data: {
+          toolId: tool.id,
+          name: `${data.name} (Primary Endpoint)`,
+          description: shortDesc,
+          endpointPath: data.endpointPath,
+          httpMethod: data.httpMethod,
+          inputSchema: data.inputSchema as object,
+          exampleRequest: data.exampleRequest as object | undefined,
+          outputSchema: data.outputSchema as object | undefined,
+          exampleResponse: data.exampleResponse as object | undefined,
+          authMethod: data.authMethod,
+          authHeaderName: data.authHeaderName,
+          encryptedSecret,
+          secretKeyVersion,
+          priceMicroUsd: data.priceMicroUsd,
+          timeoutMs: data.timeoutMs,
+          status: data.isDemo ? 'APPROVED' : 'DRAFT',
+          isPrimary: true,
+        },
+      });
+
+      return { tool, initialEndpoint };
     });
 
-    // Create initial ToolVersion
-    await prisma.toolVersion.create({
-      data: {
-        toolId: tool.id,
-        version: 1,
-        inputSchema: data.inputSchema as object,
-        outputSchema: data.outputSchema as object | undefined,
-        priceMicroUsd: data.priceMicroUsd,
-        endpointPath: data.endpointPath,
-        httpMethod: data.httpMethod,
-        authMethod: data.authMethod,
+    const { encryptedSecret: _, secretKeyVersion: __, ...safeTool } = result.tool;
+    const { encryptedSecret: ___, secretKeyVersion: ____, ...safeEndpoint } = result.initialEndpoint;
+
+    return sendSuccess(
+      res,
+      {
+        ...safeTool,
+        priceMicroUsd: safeTool.priceMicroUsd.toString(),
+        endpointCount: 1,
+        endpoints: [
+          {
+            ...safeEndpoint,
+            priceMicroUsd: safeEndpoint.priceMicroUsd.toString(),
+          },
+        ],
       },
-    });
-
-    // Invariant: Never return the secret
-    const { encryptedSecret: _, secretKeyVersion: __, ...safeTool } = tool;
-
-    return sendSuccess(res, { ...safeTool, priceMicroUsd: safeTool.priceMicroUsd.toString() }, 201);
+      201
+    );
   } catch (error) {
     next(error);
   }
@@ -401,6 +525,316 @@ toolRouter.post('/:id/submit', requireAuth, async (req: Request, res: Response, 
     next(error);
   }
 });
+
+// ============================================================================
+// PHASE 3: ENDPOINT MANAGEMENT UNDER EXISTING API SERVICES
+// ============================================================================
+
+// GET /api/tools/:id/endpoints - List all endpoints for an API service
+toolRouter.get('/:id/endpoints', optionalAuth, async (req: Request, res: Response, next) => {
+  try {
+    const tool = await prisma.tool.findUnique({
+      where: { id: req.params.id },
+    });
+
+    if (!tool) {
+      throw new NotFoundError('API service not found');
+    }
+
+    const isOwner = req.user && req.user.userId === tool.creatorId;
+    const isAdmin = req.user && req.user.isAdmin;
+    if (tool.status !== 'APPROVED' && !tool.isDemo && !isOwner && !isAdmin) {
+      throw new NotFoundError('API service not found');
+    }
+
+    const endpoints = await prisma.toolEndpoint.findMany({
+      where: { toolId: tool.id },
+      orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+    });
+
+    const safeEndpoints = endpoints.map((ep) => {
+      const { encryptedSecret: _, secretKeyVersion: __, ...safe } = ep;
+      return {
+        ...safe,
+        priceMicroUsd: safe.priceMicroUsd.toString(),
+        toolName: tool.name,
+      };
+    });
+
+    return sendSuccess(res, safeEndpoints);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/tools/:id/endpoints - Add new endpoint to an existing API service (Phase 3)
+toolRouter.post('/:id/endpoints', requireAuth, async (req: Request, res: Response, next) => {
+  try {
+    const tool = await prisma.tool.findUnique({
+      where: { id: req.params.id },
+    });
+
+    if (!tool) {
+      throw new NotFoundError('API service not found');
+    }
+
+    // Phase 3, Step 3.2: Verify that the authenticated creator owns that API
+    if (tool.creatorId !== req.user!.userId && !req.user!.isAdmin) {
+      throw new ForbiddenError('You can only add endpoints to API services you own');
+    }
+
+    const parsed = createEndpointSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return sendError(res, 'Validation error', 400, 'VALIDATION_ERROR', parsed.error.format());
+    }
+
+    const data = parsed.data;
+
+    // Phase 3, Step 3.4: Check for duplicate endpoint paths and methods within the same API
+    const existing = await prisma.toolEndpoint.findUnique({
+      where: {
+        toolId_endpointPath_httpMethod: {
+          toolId: tool.id,
+          endpointPath: data.endpointPath,
+          httpMethod: data.httpMethod,
+        },
+      },
+    });
+
+    if (existing) {
+      throw new BadRequestError(
+        `An endpoint with path "${data.endpointPath}" and method "${data.httpMethod}" already exists on this API service.`
+      );
+    }
+
+    let encryptedSecret = null;
+    let secretKeyVersion = null;
+    if (data.upstreamSecret) {
+      const encrypted = encryptSecret(data.upstreamSecret);
+      encryptedSecret = encrypted.encrypted;
+      secretKeyVersion = encrypted.keyVersion;
+    }
+
+    // Phase 3, Step 3.5 & 3.6: Save new endpoint in PostgreSQL associated with selected API
+    const endpoint = await prisma.toolEndpoint.create({
+      data: {
+        toolId: tool.id,
+        name: data.name,
+        description: data.description || null,
+        endpointPath: data.endpointPath,
+        httpMethod: data.httpMethod,
+        inputSchema: data.inputSchema as object,
+        exampleRequest: data.exampleRequest as object | undefined,
+        outputSchema: data.outputSchema as object | undefined,
+        exampleResponse: data.exampleResponse as object | undefined,
+        authMethod: data.authMethod,
+        authHeaderName: data.authHeaderName || null,
+        encryptedSecret,
+        secretKeyVersion,
+        priceMicroUsd: data.priceMicroUsd,
+        timeoutMs: data.timeoutMs,
+        status: tool.isDemo ? 'APPROVED' : 'DRAFT',
+        isPrimary: false,
+      },
+    });
+
+    const { encryptedSecret: _, secretKeyVersion: __, ...safeEndpoint } = endpoint;
+    return sendSuccess(
+      res,
+      {
+        ...safeEndpoint,
+        priceMicroUsd: safeEndpoint.priceMicroUsd.toString(),
+        toolName: tool.name,
+      },
+      201
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/tools/:id/endpoints/:endpointId/test - Test a specific endpoint (Phase 4.D)
+toolRouter.post('/:id/endpoints/:endpointId/test', requireAuth, async (req: Request, res: Response, next) => {
+  try {
+    const tool = await prisma.tool.findUnique({
+      where: { id: req.params.id },
+    });
+
+    if (!tool) {
+      throw new NotFoundError('API service not found');
+    }
+
+    if (tool.creatorId !== req.user!.userId && !req.user!.isAdmin) {
+      throw new ForbiddenError('Unauthorized');
+    }
+
+    const endpoint = await prisma.toolEndpoint.findFirst({
+      where: { id: req.params.endpointId, toolId: tool.id },
+    });
+
+    if (!endpoint) {
+      throw new NotFoundError('Endpoint not found');
+    }
+
+    const sampleInput = req.body.input || {};
+
+    const result = await executeUpstreamTool({
+      baseUrl: tool.baseUrl,
+      endpointPath: endpoint.endpointPath,
+      httpMethod: endpoint.httpMethod,
+      authMethod: endpoint.authMethod,
+      authHeaderName: endpoint.authHeaderName,
+      encryptedSecret: endpoint.encryptedSecret || tool.encryptedSecret,
+      payload: sampleInput,
+      timeoutMs: endpoint.timeoutMs || tool.timeoutMs,
+      isDemo: tool.isDemo,
+    });
+
+    const testRun = await prisma.toolTestRun.create({
+      data: {
+        toolId: tool.id,
+        endpointId: endpoint.id,
+        sampleInput: sampleInput as object,
+        responseStatus: result.statusCode,
+        responseBody: result.body as object,
+        latencyMs: result.latencyMs,
+        isSuccess: result.isSuccess,
+        errorMessage: result.failureReason,
+      },
+    });
+
+    return sendSuccess(res, {
+      testRunId: testRun.id,
+      isSuccess: result.isSuccess,
+      statusCode: result.statusCode,
+      latencyMs: result.latencyMs,
+      response: result.body,
+      errorMessage: result.failureReason,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// PUT /api/tools/:id/endpoints/:endpointId - Edit an endpoint (Phase 4.D)
+toolRouter.put('/:id/endpoints/:endpointId', requireAuth, async (req: Request, res: Response, next) => {
+  try {
+    const tool = await prisma.tool.findUnique({
+      where: { id: req.params.id },
+    });
+
+    if (!tool) {
+      throw new NotFoundError('API service not found');
+    }
+
+    if (tool.creatorId !== req.user!.userId && !req.user!.isAdmin) {
+      throw new ForbiddenError('Unauthorized');
+    }
+
+    const endpoint = await prisma.toolEndpoint.findFirst({
+      where: { id: req.params.endpointId, toolId: tool.id },
+    });
+
+    if (!endpoint) {
+      throw new NotFoundError('Endpoint not found');
+    }
+
+    const {
+      name,
+      description,
+      endpointPath,
+      httpMethod,
+      inputSchema,
+      exampleRequest,
+      outputSchema,
+      exampleResponse,
+      priceMicroUsd,
+      authMethod,
+      authHeaderName,
+      upstreamSecret,
+      timeoutMs,
+      status,
+    } = req.body;
+
+    let encryptedSecret = endpoint.encryptedSecret;
+    let secretKeyVersion = endpoint.secretKeyVersion;
+    if (upstreamSecret) {
+      const encrypted = encryptSecret(upstreamSecret);
+      encryptedSecret = encrypted.encrypted;
+      secretKeyVersion = encrypted.keyVersion;
+    }
+
+    let newPrice = endpoint.priceMicroUsd;
+    if (priceMicroUsd !== undefined) {
+      newPrice = BigInt(priceMicroUsd);
+    }
+
+    const updated = await prisma.toolEndpoint.update({
+      where: { id: endpoint.id },
+      data: {
+        ...(name ? { name } : {}),
+        ...(description !== undefined ? { description } : {}),
+        ...(endpointPath ? { endpointPath } : {}),
+        ...(httpMethod ? { httpMethod } : {}),
+        ...(inputSchema ? { inputSchema: inputSchema as object } : {}),
+        ...(exampleRequest !== undefined ? { exampleRequest: exampleRequest as object } : {}),
+        ...(outputSchema !== undefined ? { outputSchema: outputSchema as object } : {}),
+        ...(exampleResponse !== undefined ? { exampleResponse: exampleResponse as object } : {}),
+        ...(authMethod ? { authMethod } : {}),
+        ...(authHeaderName !== undefined ? { authHeaderName } : {}),
+        encryptedSecret,
+        secretKeyVersion,
+        priceMicroUsd: newPrice,
+        ...(timeoutMs ? { timeoutMs: Number(timeoutMs) } : {}),
+        ...(status ? { status } : {}),
+      },
+    });
+
+    const { encryptedSecret: _, secretKeyVersion: __, ...safe } = updated;
+    return sendSuccess(res, { ...safe, priceMicroUsd: safe.priceMicroUsd.toString() });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE /api/tools/:id/endpoints/:endpointId - Deactivate / delete endpoint
+toolRouter.delete('/:id/endpoints/:endpointId', requireAuth, async (req: Request, res: Response, next) => {
+  try {
+    const tool = await prisma.tool.findUnique({
+      where: { id: req.params.id },
+      include: { _count: { select: { endpoints: true } } },
+    });
+
+    if (!tool) {
+      throw new NotFoundError('API service not found');
+    }
+
+    if (tool.creatorId !== req.user!.userId && !req.user!.isAdmin) {
+      throw new ForbiddenError('Unauthorized');
+    }
+
+    const endpoint = await prisma.toolEndpoint.findFirst({
+      where: { id: req.params.endpointId, toolId: tool.id },
+    });
+
+    if (!endpoint) {
+      throw new NotFoundError('Endpoint not found');
+    }
+
+    if (tool._count.endpoints <= 1) {
+      throw new BadRequestError('Cannot delete the only endpoint for this API service. Each API must have at least one endpoint.');
+    }
+
+    await prisma.toolEndpoint.delete({
+      where: { id: endpoint.id },
+    });
+
+    return sendSuccess(res, { message: 'Endpoint removed successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 
 toolRouter.put('/:id', requireAuth, async (req: Request, res: Response, next) => {
   try {
@@ -683,6 +1117,7 @@ toolRouter.post('/:id/calls', async (req: Request, res: Response, next) => {
     const result = await ExecutionGateway.execute({
       agentId: agentId!,
       toolId: req.params.id,
+      endpointId: req.body.endpointId || undefined,
       idempotencyKey,
       input: req.body.input,
       forceApproval: req.body.forceApproval === true,

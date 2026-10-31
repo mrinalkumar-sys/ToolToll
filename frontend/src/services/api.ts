@@ -2,6 +2,7 @@ import {
   User,
   Wallet,
   Tool,
+  ToolEndpoint,
   Agent,
   AgentCredential,
   LedgerEntry,
@@ -404,9 +405,12 @@ class ApiService {
       httpMethod: String(payload.httpMethod || 'POST'),
       inputSchema: payload.inputSchema || { type: 'object' },
       outputSchema: payload.outputSchema || undefined,
+      version: payload.version ? (parseInt(String(payload.version), 10) || 1) : 1,
+      exampleRequest: payload.exampleRequest || undefined,
+      exampleResponse: payload.exampleResponse || undefined,
       priceMicroUsd: String(payload.priceMicroUsd || '5000'),
-      authMethod: payload.authMethod || (payload.authConfig?.type === 'HEADER_KEY' ? 'API_KEY_HEADER' : 'NONE'),
-      authHeaderName: payload.authHeaderName || (payload.authConfig?.type === 'HEADER_KEY' ? 'X-API-Key' : undefined),
+      authMethod: payload.authMethod || (payload.authConfig?.type === 'HEADER_KEY' || payload.authConfig?.type === 'API_KEY' ? 'API_KEY_HEADER' : payload.authConfig?.type === 'BEARER' ? 'BEARER_TOKEN' : payload.authConfig?.type === 'BASIC' ? 'BASIC_AUTH' : 'NONE'),
+      authHeaderName: payload.authHeaderName || (payload.authConfig?.headerName || (payload.authConfig?.type === 'HEADER_KEY' || payload.authConfig?.type === 'API_KEY' ? 'X-API-Key' : undefined)),
       upstreamSecret: payload.upstreamSecret || payload.authConfig?.secret || undefined,
     };
 
@@ -428,6 +432,88 @@ class ApiService {
       console.warn('createTool backend error:', err.message);
       throw err;
     }
+  }
+
+  
+  async addEndpoint(toolId: string, payload: Record<string, any>): Promise<ToolEndpoint> {
+    const body = {
+      name: String(payload.name || 'New Endpoint'),
+      endpointPath: String(payload.endpointPath?.startsWith('/') ? payload.endpointPath : `/${payload.endpointPath || 'v1/run'}`),
+      httpMethod: String(payload.httpMethod || 'POST'),
+      description: payload.description ? String(payload.description) : undefined,
+      inputSchema: payload.inputSchema || { type: 'object' },
+      exampleRequest: payload.exampleRequest || undefined,
+      outputSchema: payload.outputSchema || undefined,
+      exampleResponse: payload.exampleResponse || undefined,
+      priceMicroUsd: String(payload.priceMicroUsd || '1000'),
+      authMethod: payload.authMethod || 'NONE',
+      authHeaderName: payload.authHeaderName || undefined,
+      upstreamSecret: payload.upstreamSecret || undefined,
+      timeoutMs: Number(payload.timeoutMs || 15000),
+    };
+
+    const created = await this.request<any>(`/tools/${toolId}/endpoints`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+
+    const ep: ToolEndpoint = {
+      ...created,
+      priceMicroUsd: String(created.priceMicroUsd || body.priceMicroUsd),
+    };
+
+    const tool = this.dynamicTools.find((t) => t.id === toolId);
+    if (tool) {
+      if (!tool.endpoints) tool.endpoints = [];
+      tool.endpoints.push(ep);
+      tool.endpointCount = tool.endpoints.length;
+    }
+
+    return ep;
+  }
+
+  async getToolEndpoints(toolId: string): Promise<ToolEndpoint[]> {
+    try {
+      const endpoints = await this.request<any[]>(`/tools/${toolId}/endpoints`);
+      return endpoints.map((ep) => ({
+        ...ep,
+        priceMicroUsd: String(ep.priceMicroUsd || '1000'),
+      }));
+    } catch (err: any) {
+      console.warn(`getToolEndpoints backend error for ${toolId}:`, err.message);
+      const tool = this.dynamicTools.find((t) => t.id === toolId);
+      return tool?.endpoints || [];
+    }
+  }
+
+  async updateEndpoint(toolId: string, endpointId: string, payload: Record<string, any>): Promise<ToolEndpoint> {
+    const updated = await this.request<any>(`/tools/${toolId}/endpoints/${endpointId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+    return {
+      ...updated,
+      priceMicroUsd: String(updated.priceMicroUsd || '1000'),
+    };
+  }
+
+  async deleteEndpoint(toolId: string, endpointId: string): Promise<{ success: boolean }> {
+    await this.request<any>(`/tools/${toolId}/endpoints/${endpointId}`, {
+      method: 'DELETE',
+    });
+    const tool = this.dynamicTools.find((t) => t.id === toolId);
+    if (tool && tool.endpoints) {
+      tool.endpoints = tool.endpoints.filter((e) => e.id !== endpointId);
+      tool.endpointCount = tool.endpoints.length;
+    }
+    return { success: true };
+  }
+
+  async testEndpoint(toolId: string, endpointId: string, input: any): Promise<any> {
+    return await this.request<any>(`/tools/${toolId}/endpoints/${endpointId}/test`, {
+      method: 'POST',
+      body: JSON.stringify({ input }),
+    });
   }
 
   async updateTool(id: string, payload: Record<string, unknown>): Promise<Tool> {

@@ -175,9 +175,12 @@ model Tool {
   status              String   @default("DRAFT") // DRAFT, TESTING, PENDING_REVIEW, APPROVED, REJECTED, SUSPENDED, PAUSED, RETIRED
   version             Int      @default(1)
   isDemo              Boolean  @default(false)
+  exampleRequest      Json?
+  exampleResponse     Json?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
+  endpoints      ToolEndpoint[]   @relation("ToolEndpoints")
   versions       ToolVersion[]
   testRuns       ToolTestRun[]
   calls          ToolCall[]
@@ -210,6 +213,40 @@ model ToolVersion {
   @@map("tool_versions")
 }
 
+// Individual endpoints associated with an API Service (PRD & Phase 2/3)
+model ToolEndpoint {
+  id                  String   @id @default(uuid())
+  toolId              String
+  tool                Tool     @relation("ToolEndpoints", fields: [toolId], references: [id], onDelete: Cascade)
+  name                String
+  description         String?
+  endpointPath        String
+  httpMethod          String   @default("POST") // GET, POST, PUT, PATCH, DELETE
+  inputSchema         Json
+  exampleRequest      Json?
+  outputSchema        Json?
+  exampleResponse     Json?
+  authMethod          String   @default("NONE") // NONE, API_KEY_HEADER, BEARER_TOKEN, BASIC_AUTH
+  authHeaderName      String?
+  encryptedSecret     String?  // AES-256-GCM encrypted
+  secretKeyVersion    String?
+  priceMicroUsd       BigInt   @default(1000) // micro-USD per call
+  currency            String   @default("USD")
+  timeoutMs           Int      @default(15000)
+  status              String   @default("DRAFT") // DRAFT, TESTING, PENDING_REVIEW, APPROVED, REJECTED, SUSPENDED, PAUSED
+  isPrimary           Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  calls               ToolCall[]
+  testRuns            ToolTestRun[]
+
+  @@unique([toolId, endpointPath, httpMethod])
+  @@index([toolId])
+  @@index([status])
+  @@map("tool_endpoints")
+}
+
 // Verification test runs for tools
 model ToolTestRun {
   id             String   @id @default(uuid())
@@ -220,6 +257,8 @@ model ToolTestRun {
   responseBody   Json?
   latencyMs      Int?
   isSuccess      Boolean
+  endpointId     String?
+  endpoint       ToolEndpoint? @relation(fields: [endpointId], references: [id], onDelete: SetNull)
   errorMessage   String?
   createdAt      DateTime @default(now())
 
@@ -245,6 +284,8 @@ model ToolCall {
   httpStatus              Int?
   latencyMs               Int?
   failureReason           String?
+  endpointId              String?
+  endpoint                ToolEndpoint? @relation(fields: [endpointId], references: [id], onDelete: SetNull)
   isReversed              Boolean   @default(false)
   createdAt               DateTime  @default(now())
   completedAt             DateTime?

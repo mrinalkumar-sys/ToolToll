@@ -14,7 +14,7 @@ export function createMcpServer(agentId: string): McpServer {
   });
 
   // Tool 1: search_tools
-  server.tool(
+  (server as any).tool(
     'search_tools',
     {
       query: z.string().optional().describe('Search term for matching tool names, descriptions, or tags'),
@@ -22,7 +22,7 @@ export function createMcpServer(agentId: string): McpServer {
       max_price: z.string().optional().describe('Maximum allowed price in micro-USD'),
       limit: z.number().optional().default(10).describe('Max number of tools to return'),
     },
-    async ({ query, category, max_price, limit }) => {
+    async ({ query, category, max_price, limit }: any) => {
       const q = (query || '').toLowerCase();
       const tools = await prisma.tool.findMany({
         where: {
@@ -67,12 +67,12 @@ export function createMcpServer(agentId: string): McpServer {
   );
 
   // Tool 2: get_tool_details
-  server.tool(
+  (server as any).tool(
     'get_tool_details',
     {
       tool_id: z.string().describe('Unique ID of the tool'),
     },
-    async ({ tool_id }) => {
+    async ({ tool_id }: any) => {
       const tool = await prisma.tool.findUnique({
         where: { id: tool_id },
         select: {
@@ -116,12 +116,12 @@ export function createMcpServer(agentId: string): McpServer {
   );
 
   // Tool 3: get_tool_price
-  server.tool(
+  (server as any).tool(
     'get_tool_price',
     {
       tool_id: z.string().describe('Unique ID of the tool'),
     },
-    async ({ tool_id }) => {
+    async ({ tool_id }: any) => {
       const tool = await prisma.tool.findUnique({
         where: { id: tool_id },
         select: { id: true, name: true, priceMicroUsd: true, currency: true },
@@ -149,7 +149,7 @@ export function createMcpServer(agentId: string): McpServer {
   );
 
   // Tool 4: get_wallet_balance
-  server.tool('get_wallet_balance', {}, async () => {
+  (server as any).tool('get_wallet_balance', {}, async () => {
     const agent = await prisma.agent.findUnique({
       where: { id: agentId },
       include: { user: { include: { wallet: true } } },
@@ -176,14 +176,14 @@ export function createMcpServer(agentId: string): McpServer {
   });
 
   // Tool 5: call_paid_tool (PRD 7.9)
-  server.tool(
+  (server as any).tool(
     'call_paid_tool',
     {
       tool_id: z.string().describe('Tool ID to execute'),
       input: z.string().describe('JSON-stringified input payload conforming to the tool schema'),
       idempotency_key: z.string().describe('Unique idempotency key to prevent duplicate charges'),
     },
-    async ({ tool_id, input, idempotency_key }) => {
+    async ({ tool_id, input, idempotency_key }: any) => {
       let parsedInput: unknown;
       try {
         parsedInput = JSON.parse(input);
@@ -213,12 +213,12 @@ export function createMcpServer(agentId: string): McpServer {
   );
 
   // Tool 6: get_call_status
-  server.tool(
+  (server as any).tool(
     'get_call_status',
     {
       call_id: z.string().describe('ID of the tool execution call'),
     },
-    async ({ call_id }) => {
+    async ({ call_id }: any) => {
       const call = await prisma.toolCall.findUnique({
         where: { id: call_id },
         select: {
@@ -251,12 +251,12 @@ export function createMcpServer(agentId: string): McpServer {
   );
 
   // Tool 7: get_usage_history
-  server.tool(
+  (server as any).tool(
     'get_usage_history',
     {
       limit: z.number().optional().default(10).describe('Max number of recent calls to retrieve'),
     },
-    async ({ limit }) => {
+    async ({ limit }: any) => {
       const calls = await prisma.toolCall.findMany({
         where: { agentId },
         orderBy: { createdAt: 'desc' },

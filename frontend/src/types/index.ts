@@ -27,6 +27,29 @@ export type ToolStatus =
   | 'PAUSED'
   | 'RETIRED';
 
+export interface ToolEndpoint {
+  id: string;
+  toolId: string;
+  name: string;
+  description?: string;
+  endpointPath: string;
+  httpMethod: string;
+  inputSchema: Record<string, unknown>;
+  exampleRequest?: Record<string, unknown>;
+  outputSchema?: Record<string, unknown>;
+  exampleResponse?: Record<string, unknown>;
+  authMethod: string;
+  authHeaderName?: string;
+  priceMicroUsd: string;
+  currency?: string;
+  timeoutMs?: number;
+  status: ToolStatus;
+  isPrimary?: boolean;
+  createdAt: string;
+  updatedAt: string;
+  toolName?: string;
+}
+
 export interface ToolVersion {
   version: number;
   priceMicroUsd: string;
@@ -57,6 +80,12 @@ export interface Tool {
     name: string;
     email: string;
   };
+  shortDescription?: string;
+  detailedDescription?: string;
+  exampleRequest?: Record<string, unknown>;
+  exampleResponse?: Record<string, unknown>;
+  endpoints?: ToolEndpoint[];
+  endpointCount?: number;
   versions?: ToolVersion[];
   testRuns?: ToolTestRun[];
   metrics?: {

@@ -13,6 +13,7 @@ import { env } from '../../config/env';
 export interface ExecuteToolRequest {
   agentId: string;
   toolId: string;
+  endpointId?: string;
   idempotencyKey: string;
   input: unknown;
   forceApproval?: boolean;
@@ -63,7 +64,7 @@ export class ExecutionGateway {
    * Execute paid tool call through complete verification and billing pipeline
    */
   static async execute(params: ExecuteToolRequest): Promise<ExecuteToolResponse> {
-    const { agentId, toolId, idempotencyKey, input, forceApproval } = params;
+    const { agentId, toolId, endpointId, idempotencyKey, input, forceApproval } = params;
 
     if (!idempotencyKey || typeof idempotencyKey !== 'string') {
       throw new BadRequestError('Idempotency-Key is required');
@@ -118,6 +119,11 @@ export class ExecutionGateway {
     // Step 3: Load Authoritative Tool Price & Specs from DB (Invariant 1)
     const tool = await prisma.tool.findUnique({
       where: { id: toolId },
+      include: {
+        endpoints: endpointId
+          ? { where: { id: endpointId } }
+          : { where: { isPrimary: true }, take: 1 },
+      },
     });
 
     if (!tool) {
@@ -140,13 +146,19 @@ export class ExecutionGateway {
       throw new ForbiddenError(`Agent is forbidden from calling tools in category '${tool.category}'`);
     }
 
-    // Step 5: Input JSON Schema Validation
-    const schemaValidation = validateJsonSchema(tool.inputSchema, input);
+    // Step 5: Endpoint resolution & Input JSON Schema Validation
+    const targetEndpoint = (tool.endpoints && tool.endpoints.length > 0) ? tool.endpoints[0] : null;
+    const priceMicroUsd = targetEndpoint ? targetEndpoint.priceMicroUsd : tool.priceMicroUsd;
+    const effectiveEndpointPath = targetEndpoint ? targetEndpoint.endpointPath : tool.endpointPath;
+    const effectiveHttpMethod = targetEndpoint ? targetEndpoint.httpMethod : tool.httpMethod;
+    const effectiveAuthMethod = targetEndpoint ? targetEndpoint.authMethod : tool.authMethod;
+    const effectiveAuthHeader = targetEndpoint ? targetEndpoint.authHeaderName : tool.authHeaderName;
+    const effectiveSecret = (targetEndpoint && targetEndpoint.encryptedSecret) ? targetEndpoint.encryptedSecret : tool.encryptedSecret;
+
+    const schemaValidation = validateJsonSchema(targetEndpoint ? targetEndpoint.inputSchema : tool.inputSchema, input);
     if (!schemaValidation.valid) {
       throw new BadRequestError(`Input schema validation failed: ${schemaValidation.error}`);
     }
-
-    const priceMicroUsd = tool.priceMicroUsd;
     const feeSetting = await prisma.platformSetting.findUnique({
       where: { key: 'PLATFORM_FEE_BPS' },
     });
@@ -221,6 +233,7 @@ export class ExecutionGateway {
         id: callId,
         agentId,
         toolId,
+        endpointId: targetEndpoint?.id || null,
         idempotencyKey,
         priceMicroUsd,
         platformFeeBps,
@@ -234,13 +247,13 @@ export class ExecutionGateway {
     // Step 9: Outbound Sandboxed Execution (Invariant 9)
     const execution = await executeUpstreamTool({
       baseUrl: tool.baseUrl,
-      endpointPath: tool.endpointPath,
-      httpMethod: tool.httpMethod,
-      authMethod: tool.authMethod,
-      authHeaderName: tool.authHeaderName,
-      encryptedSecret: tool.encryptedSecret,
+      endpointPath: effectiveEndpointPath,
+      httpMethod: effectiveHttpMethod,
+      authMethod: effectiveAuthMethod,
+      authHeaderName: effectiveAuthHeader,
+      encryptedSecret: effectiveSecret,
       payload: input,
-      timeoutMs: tool.timeoutMs,
+      timeoutMs: targetEndpoint?.timeoutMs || tool.timeoutMs,
       isDemo: tool.isDemo,
     });
 

@@ -48,6 +48,11 @@ creatorRouter.get('/earnings', requireAuth, requireRole('creator'), async (req: 
       }
     }
 
+    const completedPayouts = await prisma.payoutRequest.findMany({
+      where: { creatorId, status: 'COMPLETED' },
+    });
+    const totalWithdrawn = completedPayouts.reduce((acc, p) => acc + p.amountMicroUsd, 0n);
+
     const formattedEarnings = earnings.map((e) => ({
       ...e,
       grossMicroUsd: e.grossMicroUsd.toString(),
@@ -61,6 +66,7 @@ creatorRouter.get('/earnings', requireAuth, requireRole('creator'), async (req: 
         totalPlatformFeeMicroUsd: totalPlatformFee.toString(),
         totalNetMicroUsd: totalNet.toString(),
         payableBalanceMicroUsd: payableBalance.toString(),
+        totalWithdrawnMicroUsd: totalWithdrawn.toString(),
         totalPaidCalls: earnings.length,
       },
       earnings: formattedEarnings,

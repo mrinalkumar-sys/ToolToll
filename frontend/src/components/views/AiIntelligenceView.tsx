@@ -44,8 +44,60 @@ interface AiIntelligenceViewProps {
 }
 
 export const AiIntelligenceView: React.FC<AiIntelligenceViewProps> = ({ onSelectTab, onRequireAuth }) => {
-  const { isAuthenticated, refreshWallet } = useAuth();
+  const { user, isAuthenticated, isLoading, refreshWallet } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'planner' | 'judge' | 'discover' | 'price' | 'onboard'>('overview');
+
+  // Detect currently authenticated user's actual role (never rely on manually selected frontend role)
+  const actualRole = React.useMemo<'consumer' | 'creator' | 'admin' | null>(() => {
+    if (!isAuthenticated || !user) return null;
+    const explicitRole = (user as any).role ? String((user as any).role).toLowerCase() : null;
+    if (explicitRole === 'creator' || explicitRole === 'consumer' || explicitRole === 'admin') {
+      return explicitRole as 'consumer' | 'creator' | 'admin';
+    }
+    if (user.isAdmin) return 'admin';
+    if (user.isCreator) return 'creator';
+    return 'consumer';
+  }, [isAuthenticated, user]);
+
+  const isConsumer = actualRole === 'consumer' || actualRole === 'admin';
+  const isCreator = actualRole === 'creator' || actualRole === 'admin';
+
+  // Track user identity to clear role-specific state on logout or user switch
+  const prevUserIdRef = React.useRef<string | null>(user?.id || null);
+
+  useEffect(() => {
+    if (prevUserIdRef.current !== (user?.id || null)) {
+      prevUserIdRef.current = user?.id || null;
+      // Reset active tab to overview
+      setActiveTab('overview');
+      // Clear previous user's role-specific state
+      setPlannerResult(null);
+      setPlannerError(null);
+      setJudgeResult(null);
+      setJudgeError(null);
+      setAuditHistory([]);
+      setSelectedCallId(null);
+      setRefundEligibility(null);
+      setRefundSuccess(null);
+      setRefundError(null);
+      setDiscoverResults(null);
+      setAdvisorResult(null);
+      setOnboardResult(null);
+    }
+  }, [user?.id]);
+
+  // Keep activeTab strictly within authorized boundaries
+  useEffect(() => {
+    if (activeTab === 'planner' || activeTab === 'judge' || activeTab === 'discover') {
+      if (!isConsumer) {
+        setActiveTab('overview');
+      }
+    } else if (activeTab === 'price' || activeTab === 'onboard') {
+      if (!isCreator) {
+        setActiveTab('overview');
+      }
+    }
+  }, [activeTab, isConsumer, isCreator]);
 
   // Available Tools loaded from backend
   const [registeredTools, setRegisteredTools] = useState<Tool[]>([]);
@@ -129,7 +181,7 @@ export const AiIntelligenceView: React.FC<AiIntelligenceViewProps> = ({ onSelect
   const [copiedCallId, setCopiedCallId] = useState<boolean>(false);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && isConsumer) {
       api.getUserCalls()
         .then((calls) => {
           if (calls && Array.isArray(calls)) {
@@ -142,7 +194,7 @@ export const AiIntelligenceView: React.FC<AiIntelligenceViewProps> = ({ onSelect
       setSelectedCallId(null);
       setRefundEligibility(null);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isConsumer]);
 
   // ==========================================
   // 3. Existing Services State (Discover, Price, Onboard)
@@ -642,6 +694,19 @@ export const AiIntelligenceView: React.FC<AiIntelligenceViewProps> = ({ onSelect
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="section-dark" style={{ minHeight: '85vh', paddingTop: '40px' }}>
+        <div className="container-editorial" style={{ textAlign: 'center', padding: '80px 0' }}>
+          <RefreshCw size={28} className="spin" color="var(--brand-orange)" style={{ margin: '0 auto 16px' }} />
+          <div style={{ color: 'var(--text-dark-secondary)', fontSize: '0.95rem' }}>
+            Verifying session and loading AI services...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="section-dark" style={{ minHeight: '85vh', paddingTop: '40px' }}>
       <div className="container-editorial">
@@ -727,102 +792,110 @@ export const AiIntelligenceView: React.FC<AiIntelligenceViewProps> = ({ onSelect
             Services Overview
           </button>
 
-          <button
-            className="btn btn-sm"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              borderBottom: activeTab === 'planner' ? '2px solid var(--brand-orange)' : '2px solid transparent',
-              color: activeTab === 'planner' ? '#FFFFFF' : 'var(--text-dark-muted)',
-              fontWeight: activeTab === 'planner' ? 800 : 600,
-              borderRadius: 0,
-              padding: '12px 18px',
-              fontSize: '0.9rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
-            onClick={() => setActiveTab('planner')}
-          >
-            <Layers size={15} color="var(--brand-orange)" />
-            AI Planner
-            <span className="badge badge-orange" style={{ fontSize: '0.62rem', padding: '1px 5px' }}>NEW</span>
-          </button>
+          {isConsumer && (
+            <>
+              <button
+                className="btn btn-sm"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  borderBottom: activeTab === 'planner' ? '2px solid var(--brand-orange)' : '2px solid transparent',
+                  color: activeTab === 'planner' ? '#FFFFFF' : 'var(--text-dark-muted)',
+                  fontWeight: activeTab === 'planner' ? 800 : 600,
+                  borderRadius: 0,
+                  padding: '12px 18px',
+                  fontSize: '0.9rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+                onClick={() => setActiveTab('planner')}
+              >
+                <Layers size={15} color="var(--brand-orange)" />
+                AI Planner
+                <span className="badge badge-orange" style={{ fontSize: '0.62rem', padding: '1px 5px' }}>NEW</span>
+              </button>
 
-          <button
-            className="btn btn-sm"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              borderBottom: activeTab === 'judge' ? '2px solid var(--brand-orange)' : '2px solid transparent',
-              color: activeTab === 'judge' ? '#FFFFFF' : 'var(--text-dark-muted)',
-              fontWeight: activeTab === 'judge' ? 800 : 600,
-              borderRadius: 0,
-              padding: '12px 18px',
-              fontSize: '0.9rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
-            onClick={() => setActiveTab('judge')}
-          >
-            <Scale size={15} />
-            Quality Judge
-          </button>
+              <button
+                className="btn btn-sm"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  borderBottom: activeTab === 'judge' ? '2px solid var(--brand-orange)' : '2px solid transparent',
+                  color: activeTab === 'judge' ? '#FFFFFF' : 'var(--text-dark-muted)',
+                  fontWeight: activeTab === 'judge' ? 800 : 600,
+                  borderRadius: 0,
+                  padding: '12px 18px',
+                  fontSize: '0.9rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+                onClick={() => setActiveTab('judge')}
+              >
+                <Scale size={15} />
+                Quality Judge
+              </button>
 
-          <button
-            className="btn btn-sm"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              borderBottom: activeTab === 'discover' ? '2px solid var(--brand-orange)' : '2px solid transparent',
-              color: activeTab === 'discover' ? '#FFFFFF' : 'var(--text-dark-muted)',
-              fontWeight: activeTab === 'discover' ? 800 : 600,
-              borderRadius: 0,
-              padding: '12px 18px',
-              fontSize: '0.9rem',
-            }}
-            onClick={() => setActiveTab('discover')}
-          >
-            <Search size={15} />
-            Semantic Discovery
-          </button>
+              <button
+                className="btn btn-sm"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  borderBottom: activeTab === 'discover' ? '2px solid var(--brand-orange)' : '2px solid transparent',
+                  color: activeTab === 'discover' ? '#FFFFFF' : 'var(--text-dark-muted)',
+                  fontWeight: activeTab === 'discover' ? 800 : 600,
+                  borderRadius: 0,
+                  padding: '12px 18px',
+                  fontSize: '0.9rem',
+                }}
+                onClick={() => setActiveTab('discover')}
+              >
+                <Search size={15} />
+                Semantic Discovery
+              </button>
+            </>
+          )}
 
-          <button
-            className="btn btn-sm"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              borderBottom: activeTab === 'price' ? '2px solid var(--brand-orange)' : '2px solid transparent',
-              color: activeTab === 'price' ? '#FFFFFF' : 'var(--text-dark-muted)',
-              fontWeight: activeTab === 'price' ? 800 : 600,
-              borderRadius: 0,
-              padding: '12px 18px',
-              fontSize: '0.9rem',
-            }}
-            onClick={() => setActiveTab('price')}
-          >
-            <DollarSign size={15} />
-            Price Advisor
-          </button>
+          {isCreator && (
+            <>
+              <button
+                className="btn btn-sm"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  borderBottom: activeTab === 'price' ? '2px solid var(--brand-orange)' : '2px solid transparent',
+                  color: activeTab === 'price' ? '#FFFFFF' : 'var(--text-dark-muted)',
+                  fontWeight: activeTab === 'price' ? 800 : 600,
+                  borderRadius: 0,
+                  padding: '12px 18px',
+                  fontSize: '0.9rem',
+                }}
+                onClick={() => setActiveTab('price')}
+              >
+                <DollarSign size={15} />
+                Price Advisor
+              </button>
 
-          <button
-            className="btn btn-sm"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              borderBottom: activeTab === 'onboard' ? '2px solid var(--brand-orange)' : '2px solid transparent',
-              color: activeTab === 'onboard' ? '#FFFFFF' : 'var(--text-dark-muted)',
-              fontWeight: activeTab === 'onboard' ? 800 : 600,
-              borderRadius: 0,
-              padding: '12px 18px',
-              fontSize: '0.9rem',
-            }}
-            onClick={() => setActiveTab('onboard')}
-          >
-            <FileCode size={15} />
-            API Onboarding
-          </button>
+              <button
+                className="btn btn-sm"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  borderBottom: activeTab === 'onboard' ? '2px solid var(--brand-orange)' : '2px solid transparent',
+                  color: activeTab === 'onboard' ? '#FFFFFF' : 'var(--text-dark-muted)',
+                  fontWeight: activeTab === 'onboard' ? 800 : 600,
+                  borderRadius: 0,
+                  padding: '12px 18px',
+                  fontSize: '0.9rem',
+                }}
+                onClick={() => setActiveTab('onboard')}
+              >
+                <FileCode size={15} />
+                API Onboarding
+              </button>
+            </>
+          )}
         </div>
 
         {/* ========================================================= */}
@@ -839,8 +912,36 @@ export const AiIntelligenceView: React.FC<AiIntelligenceViewProps> = ({ onSelect
               </p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px' }}>
-              {/* Card 1: AI Planner */}
+            {!isAuthenticated ? (
+              <div
+                className="card-dark"
+                style={{
+                  padding: '48px 32px',
+                  textAlign: 'center',
+                  border: '1px solid var(--border-dark)',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'rgba(255, 255, 255, 0.02)',
+                }}
+              >
+                <Brain size={40} color="var(--brand-orange)" style={{ margin: '0 auto 16px' }} />
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#FFFFFF', marginBottom: '8px' }}>
+                  Role-Based AI Services
+                </h3>
+                <p style={{ color: 'var(--text-dark-secondary)', fontSize: '0.9rem', maxWidth: '520px', margin: '0 auto 20px', lineHeight: 1.6 }}>
+                  Please sign in to access ToolToll AI services. Consumer accounts have access to the AI Planner, Quality Judge, and Semantic Discovery. Creator accounts have access to the Price Advisor and API Onboarding.
+                </p>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => onRequireAuth && onRequireAuth('Sign In to Access AI Services')}
+                >
+                  Sign In to Access Services
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px' }}>
+                {isConsumer && (
+                  <>
+                    {/* Card 1: AI Planner */}
               <div
                 className="card-dark"
                 style={{
@@ -1020,7 +1121,11 @@ export const AiIntelligenceView: React.FC<AiIntelligenceViewProps> = ({ onSelect
                   </button>
                 </div>
               </div>
+                  </>
+                )}
 
+                {isCreator && (
+                  <>
               {/* Card 4: Price Advisor */}
               <div className="card-dark" style={{ padding: '28px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', border: '1px solid var(--border-dark)' }}>
                 <div>
@@ -1090,14 +1195,17 @@ export const AiIntelligenceView: React.FC<AiIntelligenceViewProps> = ({ onSelect
                   </button>
                 </div>
               </div>
-            </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         )}
 
         {/* ========================================================= */}
         {/* TAB 1: AI PLANNER WORKSPACE                               */}
         {/* ========================================================= */}
-        {activeTab === 'planner' && (
+        {activeTab === 'planner' && isConsumer && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '28px' }}>
             <div className="card-dark" style={{ padding: '28px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
@@ -1366,7 +1474,7 @@ export const AiIntelligenceView: React.FC<AiIntelligenceViewProps> = ({ onSelect
         {/* ========================================================= */}
         {/* TAB 2: QUALITY JUDGE — MINIMAL TWO-CARD LAYOUT            */}
         {/* ========================================================= */}
-        {activeTab === 'judge' && (
+        {activeTab === 'judge' && isConsumer && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '28px' }}>
             {/* Left Card: Quality Check */}
             <div className="card-dark" style={{ padding: '28px' }}>
@@ -2061,7 +2169,7 @@ export const AiIntelligenceView: React.FC<AiIntelligenceViewProps> = ({ onSelect
         {/* ========================================================= */}
         {/* TAB 3: SEMANTIC TOOL DISCOVERY                            */}
         {/* ========================================================= */}
-        {activeTab === 'discover' && (
+        {activeTab === 'discover' && isConsumer && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '28px' }}>
             <div className="card-dark" style={{ padding: '28px' }}>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#FFFFFF', marginBottom: '8px' }}>
@@ -2139,7 +2247,7 @@ export const AiIntelligenceView: React.FC<AiIntelligenceViewProps> = ({ onSelect
         {/* ========================================================= */}
         {/* TAB 4: AI PRICE ADVISOR                                   */}
         {/* ========================================================= */}
-        {activeTab === 'price' && (
+        {activeTab === 'price' && isCreator && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '28px' }}>
             <div className="card-dark" style={{ padding: '28px' }}>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#FFFFFF', marginBottom: '8px' }}>
@@ -2237,7 +2345,7 @@ export const AiIntelligenceView: React.FC<AiIntelligenceViewProps> = ({ onSelect
         {/* ========================================================= */}
         {/* TAB 5: AUTOMATED API ONBOARDING                           */}
         {/* ========================================================= */}
-        {activeTab === 'onboard' && (
+        {activeTab === 'onboard' && isCreator && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '28px' }}>
             <div className="card-dark" style={{ padding: '28px' }}>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#FFFFFF', marginBottom: '8px' }}>

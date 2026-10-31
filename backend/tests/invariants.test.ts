@@ -54,7 +54,9 @@ describe('ToolToll Non-Negotiable Invariants', () => {
       const { encrypted } = encryptSecret(plaintext);
       const [iv, ct, tag] = encrypted.split(':');
       
-      const tamperedCt = ct.substring(0, ct.length - 2) + 'ff';
+      const tamperedCt = ct.endsWith('00')
+        ? ct.substring(0, ct.length - 2) + 'ff'
+        : ct.substring(0, ct.length - 2) + '00';
       const tamperedPayload = `${iv}:${tamperedCt}:${tag}`;
 
       assert.throws(() => decryptSecret(tamperedPayload), Error);

@@ -38,13 +38,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await api.getCurrentUser();
       setUser(data.user);
       setWallet(data.wallet);
-      if (data.user.isAdmin) {
-        setActiveRole('admin');
-      } else if (data.user.isCreator) {
-        setActiveRole('creator');
-      } else {
-        setActiveRole('consumer');
-      }
+      const resolvedRole: UserRole = data.user.isAdmin
+        ? 'admin'
+        : ((data.user as any).role
+            ? String((data.user as any).role).toLowerCase() === 'creator'
+            : data.user.isCreator)
+        ? 'creator'
+        : 'consumer';
+      setActiveRole(resolvedRole);
     } catch {
       api.setToken(null);
       setToken(null);
@@ -76,13 +77,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(res.user);
       setWallet(res.wallet);
       setToken(res.token);
-      if (res.user.isAdmin) {
-        setActiveRole('admin');
-      } else if (res.user.isCreator) {
-        setActiveRole('creator');
-      } else {
-        setActiveRole('consumer');
-      }
+      const resolvedRole: UserRole = res.user.isAdmin
+        ? 'admin'
+        : ((res.user as any).role
+            ? String((res.user as any).role).toLowerCase() === 'creator'
+            : res.user.isCreator)
+        ? 'creator'
+        : 'consumer';
+      setActiveRole(resolvedRole);
     } finally {
       setIsLoading(false);
     }

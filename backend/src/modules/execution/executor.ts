@@ -70,13 +70,13 @@ export async function executeUpstreamTool(params: ExecutionParams): Promise<Exec
 
   try {
     const res = await request(validatedTarget.url.toString(), {
-      method: params.httpMethod as 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
+      method: params.httpMethod as any,
       headers,
       body: serializedBody,
       bodyTimeout: effectiveTimeout,
       headersTimeout: effectiveTimeout,
-      maxRedirections: 0, // Invariant 9: Do not auto-follow redirects to prevent SSRF bypass
-    });
+      maxRedirections: 0,
+    } as any);
 
     const latencyMs = Date.now() - startTime;
     const rawText = await res.body.text();

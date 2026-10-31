@@ -1,3 +1,4 @@
+import { UserRole } from '../../types';
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { formatMicroUsd } from '../../utils/formatters';
@@ -44,6 +45,17 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
+  // Detect currently authenticated user's actual role from the session
+  const actualRole: UserRole = user?.isAdmin
+    ? 'admin'
+    : ((user as any)?.role
+        ? String((user as any).role).toLowerCase() === 'creator'
+        : user?.isCreator)
+    ? 'creator'
+    : 'consumer';
+
+  const isActualCreator = actualRole === 'creator';
+
   const handleLogout = async () => {
     if (isLoggingOut) return;
     setIsLoggingOut(true);
@@ -73,19 +85,15 @@ export const Navbar: React.FC<NavbarProps> = ({
       { id: 'playground', label: 'Playground', icon: Bot },
       { id: 'ai', label: 'AI Service', icon: Brain }
     );
-  } else if (activeRole === 'creator') {
-    // C. Creator Navigation: show Marketplace, Creator Studio, AI Service, Wallet / Earnings
+  } else if (actualRole === 'creator') {
+    // C. Creator Navigation: show Marketplace, Playground, Creator Studio, AI Service
     navItems.push(
       { id: 'marketplace', label: 'Marketplace', icon: Store },
+      { id: 'playground', label: 'Playground', icon: Bot },
       { id: 'creator', label: 'Creator Studio', icon: Hammer },
-      { id: 'ai', label: 'AI Service', icon: Brain },
-      { id: 'wallet', label: 'Earnings & Wallet', icon: Wallet }
+      { id: 'ai', label: 'AI Service', icon: Brain }
     );
-    // If the creator also holds consumer authorization, allow playground testing
-    if (user?.isConsumer) {
-      navItems.splice(1, 0, { id: 'playground', label: 'Playground', icon: Bot });
-    }
-  } else if (activeRole === 'admin') {
+  } else if (actualRole === 'admin') {
     // D. Admin Navigation: full platform oversight and management controls
     navItems.push(
       { id: 'marketplace', label: 'Marketplace', icon: Store },
@@ -145,6 +153,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             display: 'flex',
             alignItems: 'center',
             flexShrink: 0,
+            flex: isActualCreator ? '1 0 200px' : undefined,
+            justifyContent: 'flex-start',
           }}
         >
           <div
@@ -223,7 +233,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            flex: '1 1 auto',
+            flex: isActualCreator ? '0 1 680px' : '1 1 auto',
+            width: isActualCreator ? '100%' : 'auto',
+            maxWidth: isActualCreator ? '680px' : 'none',
             minWidth: 0,
             padding: '0 4px',
           }}
@@ -233,17 +245,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             style={{
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              gap: navItems.length <= 3 ? '6px' : '4px',
+              justifyContent: isActualCreator ? 'stretch' : 'center',
+              gap: isActualCreator ? '8px' : (navItems.length <= 3 ? '6px' : '4px'),
               background: 'rgba(255, 255, 255, 0.03)',
-              padding: '4px 6px',
+              padding: isActualCreator ? '5px 8px' : '4px 6px',
               borderRadius: 'var(--radius-sm)',
               border: '1px solid var(--border-dark)',
-              width: 'max-content',
-              maxWidth: '100%',
+              width: '100%',
+              maxWidth: isActualCreator ? '680px' : 'max-content',
               boxShadow: '0 2px 14px rgba(0, 0, 0, 0.25)',
               overflowX: 'auto',
               scrollbarWidth: 'none',
+              boxSizing: 'border-box',
             }}
           >
             {navItems.map((item) => {
@@ -257,33 +270,31 @@ export const Navbar: React.FC<NavbarProps> = ({
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '7px',
-                    padding:
-                      navItems.length <= 3
+                    gap: isActualCreator ? '8px' : '7px',
+                    flex: isActualCreator ? '1 1 0' : '0 0 auto',
+                    minWidth: 0,
+                    padding: isActualCreator
+                      ? '8px 16px'
+                      : (navItems.length <= 3
                         ? '7px 16px'
                         : navItems.length <= 5
                         ? '6px 12px'
-                        : '6px 9px',
+                        : '6px 9px'),
                     background: isActive ? 'rgba(255, 255, 255, 0.09)' : 'transparent',
                     color: isActive ? '#FFFFFF' : 'var(--text-dark-secondary)',
                     border: isActive ? '1px solid var(--border-dark-hover)' : '1px solid transparent',
                     fontWeight: isActive ? 700 : 500,
-                    fontSize:
-                      navItems.length <= 3
-                        ? '0.84rem'
-                        : navItems.length <= 5
-                        ? '0.81rem'
-                        : '0.78rem',
+                    fontSize: isActualCreator ? '0.84rem' : (navItems.length <= 3 ? '0.84rem' : '0.81rem'),
                     position: 'relative',
                     whiteSpace: 'nowrap',
                     letterSpacing: '-0.01em',
                     borderRadius: 'var(--radius-xs)',
-                    flexShrink: 0,
                     cursor: 'pointer',
+                    transition: 'all 0.18s ease',
                   }}
                   onClick={() => handleTabClick(item.id)}
                 >
-                  <Icon size={14} />
+                  <Icon size={15} />
                   <span>{item.label}</span>
                   {isActive && (
                     <span
@@ -293,7 +304,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         bottom: '-3px',
                         left: '50%',
                         transform: 'translateX(-50%)',
-                        width: '24px',
+                        width: isActualCreator ? '36px' : '24px',
                         height: '2px',
                         backgroundColor: 'var(--brand-orange)',
                         borderRadius: '2px',
@@ -319,98 +330,95 @@ export const Navbar: React.FC<NavbarProps> = ({
             justifyContent: 'flex-end',
             gap: '12px',
             flexShrink: 0,
+            flex: isActualCreator ? '1 0 200px' : undefined,
           }}
         >
           {isAuthenticated ? (
             <>
-              {/* Micro Balance & Top Up Container */}
-              <div
-                className="navbar-balance-pill"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  background: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid var(--border-dark)',
-                  borderRadius: 'var(--radius-sm)',
-                  padding: '4px 8px 4px 12px',
-                  gap: '10px',
-                  flexShrink: 0,
-                }}
-              >
-                <div>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      fontSize: '0.60rem',
-                      color: 'var(--text-dark-muted)',
-                      textTransform: 'uppercase',
-                      fontWeight: 700,
-                      letterSpacing: '0.04em',
-                      lineHeight: 1,
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: '6px',
-                        height: '6px',
-                        borderRadius: '50%',
-                        backgroundColor: 'var(--status-emerald)',
-                        boxShadow: '0 0 6px rgba(16, 185, 129, 0.6)',
-                        flexShrink: 0,
-                      }}
-                    />
-                    Micro Balance
-                  </div>
-                  <div
-                    style={{
-                      fontWeight: 800,
-                      fontSize: '0.88rem',
-                      color: '#FFFFFF',
-                      fontFamily: 'var(--font-mono)',
-                      letterSpacing: '-0.01em',
-                      marginTop: '2px',
-                      lineHeight: 1.1,
-                    }}
-                  >
-                    {formatMicroUsd(wallet?.balance)}
-                  </div>
-                </div>
-
-                <button
-                  className="btn btn-primary btn-sm"
+              {/* Micro Balance & Top Up Container (Hidden for Creator role) */}
+              {!isActualCreator && (
+                <div
+                  className="navbar-balance-pill"
                   style={{
-                    padding: '4px 9px',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    borderRadius: 'var(--radius-xs)',
-                    display: 'inline-flex',
+                    display: 'flex',
                     alignItems: 'center',
-                    gap: '4px',
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid var(--border-dark)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '4px 8px 4px 12px',
+                    gap: '10px',
                     flexShrink: 0,
                   }}
-                  onClick={onOpenTopup}
-                  title="Add Micro-USD to wallet"
                 >
-                  <Plus size={12} strokeWidth={3} />
-                  Top Up
-                </button>
-              </div>
+                  <div>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        fontSize: '0.60rem',
+                        color: 'var(--text-dark-muted)',
+                        textTransform: 'uppercase',
+                        fontWeight: 700,
+                        letterSpacing: '0.04em',
+                        lineHeight: 1,
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: '6px',
+                          height: '6px',
+                          borderRadius: '50%',
+                          backgroundColor: 'var(--status-emerald)',
+                          boxShadow: '0 0 6px rgba(16, 185, 129, 0.6)',
+                          flexShrink: 0,
+                        }}
+                      />
+                      Micro Balance
+                    </div>
+                    <div
+                      style={{
+                        fontWeight: 800,
+                        fontSize: '0.88rem',
+                        color: '#FFFFFF',
+                        fontFamily: 'var(--font-mono)',
+                        letterSpacing: '-0.01em',
+                        marginTop: '2px',
+                        lineHeight: 1.1,
+                      }}
+                    >
+                      {formatMicroUsd(wallet?.balance)}
+                    </div>
+                  </div>
 
-              {/* Role Dropdown Section */}
+                  <button
+                    className="btn btn-primary btn-sm"
+                    style={{
+                      padding: '4px 9px',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      borderRadius: 'var(--radius-xs)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      flexShrink: 0,
+                    }}
+                    onClick={onOpenTopup}
+                    title="Add Micro-USD to wallet"
+                  >
+                    <Plus size={12} strokeWidth={3} />
+                    Top Up
+                  </button>
+                </div>
+              )}
+
+              {/* Role Indicator Section */}
               <div className="navbar-role-wrapper" style={{ flexShrink: 0 }}>
                 <RoleSelector
-                  activeRole={activeRole}
-                  onSelectRole={(newRole) => {
-                    setActiveRole(newRole);
-                    if (newRole === 'creator') onSelectTab('creator');
-                    else if (newRole === 'admin') onSelectTab('admin');
-                    else onSelectTab('marketplace');
-                  }}
+                  actualRole={actualRole}
                   isAdmin={Boolean(user?.isAdmin)}
-                  isCreator={Boolean(user?.isCreator)}
-                  isConsumer={Boolean(user?.isConsumer)}
+                  isCreator={actualRole === 'creator'}
+                  isConsumer={actualRole === 'consumer'}
                   onLogout={handleLogout}
                   isLoggingOut={isLoggingOut}
                 />
@@ -461,7 +469,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             gap: '8px',
           }}
         >
-          {isAuthenticated && (
+          {isAuthenticated && !isActualCreator && (
             <div
               className="mobile-wallet-card"
               style={{
@@ -554,24 +562,17 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div style={{ marginTop: '10px', paddingTop: '12px', borderTop: '1px solid var(--border-dark)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
                 <span style={{ fontSize: '0.74rem', color: 'var(--text-dark-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  Session Role
+                  Role
                 </span>
-                <span className="badge badge-orange">{activeRole.toUpperCase()}</span>
+                <span className="badge badge-orange">{actualRole.toUpperCase()}</span>
               </div>
 
               <div>
                 <RoleSelector
-                  activeRole={activeRole}
-                  onSelectRole={(newRole) => {
-                    setActiveRole(newRole);
-                    if (newRole === 'creator') onSelectTab('creator');
-                    else if (newRole === 'admin') onSelectTab('admin');
-                    else onSelectTab('marketplace');
-                    setMobileMenuOpen(false);
-                  }}
+                  actualRole={actualRole}
                   isAdmin={Boolean(user?.isAdmin)}
-                  isCreator={Boolean(user?.isCreator)}
-                  isConsumer={Boolean(user?.isConsumer)}
+                  isCreator={actualRole === 'creator'}
+                  isConsumer={actualRole === 'consumer'}
                   onLogout={handleLogout}
                   isLoggingOut={isLoggingOut}
                 />
@@ -648,9 +649,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             gap: 8px !important;
           }
           .nav-tab-btn {
-            padding: 5px 8px !important;
-            font-size: 0.76rem !important;
-            gap: 5px !important;
+            padding: 6px 10px !important;
+            font-size: 0.80rem !important;
+            gap: 6px !important;
           }
         }
 

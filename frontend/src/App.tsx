@@ -37,6 +37,8 @@ function MainApp() {
         setCurrentTab('marketplace');
       } else if (currentTab === 'agents' && activeRole === 'creator' && !user?.isConsumer && !user?.isAdmin) {
         setCurrentTab('creator');
+      } else if (currentTab === 'wallet' && activeRole === 'creator' && !user?.isAdmin) {
+        setCurrentTab('creator');
       }
     }
   }, [isAuthenticated, activeRole, user, currentTab]);
