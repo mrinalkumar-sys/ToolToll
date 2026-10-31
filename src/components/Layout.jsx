@@ -110,9 +110,11 @@ export const Layout = ({ children }) => {
                   <span className="text-sm font-semibold text-emerald-400 font-mono">
                     ${walletBalance}
                   </span>
-                  <span className="text-[10px] bg-indigo-500/10 text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-500/20 group-hover:bg-indigo-500/20">
-                    + Top Up
-                  </span>
+                  {user.role !== 'admin' && location.pathname !== '/admin' && (
+                    <span className="text-[10px] bg-indigo-500/10 text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-500/20 group-hover:bg-indigo-500/20">
+                      + Top Up
+                    </span>
+                  )}
                 </Link>
 
                 {/* Quick Role Switcher for Demo */}

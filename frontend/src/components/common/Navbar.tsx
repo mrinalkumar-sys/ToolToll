@@ -391,24 +391,26 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </div>
                   </div>
 
-                  <button
-                    className="btn btn-primary btn-sm"
-                    style={{
-                      padding: '4px 9px',
-                      fontSize: '0.72rem',
-                      fontWeight: 700,
-                      borderRadius: 'var(--radius-xs)',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      flexShrink: 0,
-                    }}
-                    onClick={onOpenTopup}
-                    title="Add Micro-USD to wallet"
-                  >
-                    <Plus size={12} strokeWidth={3} />
-                    Top Up
-                  </button>
+                  {actualRole !== 'admin' && currentTab !== 'admin' && (
+                    <button
+                      className="btn btn-primary btn-sm"
+                      style={{
+                        padding: '4px 9px',
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        borderRadius: 'var(--radius-xs)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        flexShrink: 0,
+                      }}
+                      onClick={onOpenTopup}
+                      title="Add Micro-USD to wallet"
+                    >
+                      <Plus size={12} strokeWidth={3} />
+                      Top Up
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -517,17 +519,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {formatMicroUsd(wallet?.balance)}
                 </div>
               </div>
-              <button
-                className="btn btn-primary btn-sm"
-                style={{ padding: '5px 12px', fontSize: '0.76rem', fontWeight: 700 }}
-                onClick={() => {
-                  onOpenTopup();
-                  setMobileMenuOpen(false);
-                }}
-              >
-                <Plus size={12} strokeWidth={3} />
-                Top Up
-              </button>
+              {actualRole !== 'admin' && currentTab !== 'admin' && (
+                <button
+                  className="btn btn-primary btn-sm"
+                  style={{ padding: '5px 12px', fontSize: '0.76rem', fontWeight: 700 }}
+                  onClick={() => {
+                    onOpenTopup();
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  <Plus size={12} strokeWidth={3} />
+                  Top Up
+                </button>
+              )}
             </div>
           )}
 

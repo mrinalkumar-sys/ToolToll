@@ -290,3 +290,79 @@ export interface RefundResult {
   newBalanceMicroUsd: string;
   message: string;
 }
+
+export interface AdminCreatorListing {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: string;
+  totalNetEarningsMicroUsd: string;
+  totalGrossEarningsMicroUsd: string;
+  totalTools: number;
+  tools: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    category: string;
+    shortDescription?: string;
+    baseUrl?: string;
+    endpointPath?: string;
+    httpMethod?: string;
+    priceMicroUsd: string;
+    status: string;
+    callsCount: number;
+    createdAt?: string;
+  }>;
+}
+
+export interface AdminConsumerListing {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: string;
+  walletBalanceMicroUsd: string;
+  walletReservedMicroUsd: string;
+  agentsCount: number;
+  agents: Array<{
+    id: string;
+    name: string;
+    isActive: boolean;
+    totalCalls?: number;
+  }>;
+  totalCallsCount: number;
+  successfulCallsCount: number;
+  totalSpentMicroUsd: string;
+}
+
+export interface AdminTransaction {
+  id: string;
+  toolId?: string;
+  toolName: string;
+  toolSlug: string;
+  category: string;
+  creatorName: string;
+  creatorEmail: string;
+  consumerName: string;
+  consumerEmail: string;
+  agentName: string;
+  priceMicroUsd: string;
+  platformFeeMicroUsd: string;
+  creatorEarningsMicroUsd: string;
+  platformFeeBps?: number;
+  status: string;
+  latencyMs?: number;
+  createdAt: string;
+}
+
+export interface AdminStats {
+  totalUsers: number;
+  totalCreators?: number;
+  totalConsumers?: number;
+  totalTools: number;
+  pendingTools?: number;
+  totalCalls: number;
+  totalGrossMicroUsd: string;
+  totalPlatformRevenueMicroUsd: string;
+  totalConsumerBalanceMicroUsd?: string;
+  totalReservedMicroUsd?: string;
+}

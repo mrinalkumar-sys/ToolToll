@@ -1,0 +1,1999 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 4 0 R 5 0 R 6 0 R] /Count 4 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Contents 7 0 R /Resources << /Font << /F1 11 0 R /F2 12 0 R /F3 13 0 R /F4 14 0 R >> >> >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Contents 8 0 R /Resources << /Font << /F1 11 0 R /F2 12 0 R /F3 13 0 R /F4 14 0 R >> >> >>
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Contents 9 0 R /Resources << /Font << /F1 11 0 R /F2 12 0 R /F3 13 0 R /F4 14 0 R >> >> >>
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Contents 10 0 R /Resources << /Font << /F1 11 0 R /F2 12 0 R /F3 13 0 R /F4 14 0 R >> >> >>
+endobj
+7 0 obj
+<< /Length 10019 >>
+stream
+q
+1.00 w
+0.100 0.180 0.320 RG
+0.040 0.090 0.180 rg
+42.00 701.89 511.28 95.00 re
+B
+Q
+q
+1.00 w
+0.000 0.440 0.730 rg
+42.00 701.89 5.00 95.00 re
+f
+Q
+q
+0.80 w
+0.150 0.500 0.850 RG
+0.000 0.300 0.550 rg
+60.00 764.89 170.00 18.00 re
+B
+Q
+BT
+0.400 0.800 1.000 rg
+/F2 8.00 Tf
+66.00 772.09 Td
+(OFFICIAL EVALUATION & TECHNICAL ROADMAP) Tj
+ET
+BT
+1.000 1.000 1.000 rg
+/F2 18.00 Tf
+60.00 743.59 Td
+(ToolToll: Hackathon Alignment & PayPal-AI Roadmap) Tj
+ET
+BT
+0.750 0.820 0.920 rg
+/F1 10.00 Tf
+60.00 726.39 Td
+(Comprehensive Evaluation Against Official Judging Criteria, Sponsor Tools & PayPal Architecture) Tj
+ET
+BT
+0.950 0.650 0.200 rg
+/F4 8.00 Tf
+60.00 712.09 Td
+(Stack: React + Node.js + Prisma + Groq / Claude / MCP + PayPal Sandbox) Tj
+ET
+BT
+0.550 0.750 0.950 rg
+/F4 8.00 Tf
+393.28 712.09 Td
+(Target: http://localhost:5173) Tj
+ET
+q
+0.80 w
+0.720 0.920 0.780 RG
+0.950 0.990 0.960 rg
+42.00 545.89 511.28 140.00 re
+B
+Q
+q
+1.00 w
+0.100 0.650 0.350 rg
+42.00 545.89 4.00 140.00 re
+f
+Q
+BT
+0.040 0.350 0.160 rg
+/F2 10.50 Tf
+56.00 668.97 Td
+(Executive Summary & Strategic Assessment) Tj
+ET
+q
+1.00 w
+0.100 0.650 0.350 rg
+448.78 664.89 92.50 14.00 re
+f
+Q
+BT
+1.000 1.000 1.000 rg
+/F2 7.50 Tf
+453.78 669.51 Td
+(SCORE: HIGH FIT) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 653.24 Td
+(ToolToll is an outstanding conceptual and technical match for this hackathon. The brief challenges) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 640.24 Td
+(entrants to build an application uniting the PayPal developer platform \(sandbox\) with an AI tool,) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 627.24 Td
+(model, or platform, where PayPal serves as a central, mission-critical foundation.) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 601.24 Td
+(ToolToll solves the single greatest infrastructure gap in autonomous AI: AI agents cannot hold bank) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 588.24 Td
+(accounts or manually enter credit card details. By establishing a micro-USD integer ledger funded via) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 575.24 Td
+(PayPal Sandbox Orders/Capture and redeemed via PayPal Payouts, ToolToll allows AI agents to discover,) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 562.24 Td
+(evaluate, and autonomously pay sub-cent fees for real APIs under strict owner-defined spending caps.) Tj
+ET
+q
+1.00 w
+0.000 0.440 0.730 rg
+42.00 513.89 24.00 20.00 re
+f
+Q
+BT
+1.000 1.000 1.000 rg
+/F2 10.00 Tf
+47.00 521.39 Td
+(1) Tj
+ET
+BT
+0.060 0.120 0.240 rg
+/F2 13.00 Tf
+74.00 518.84 Td
+(Hackathon Requirements Comparison Matrix) Tj
+ET
+BT
+0.400 0.480 0.580 rg
+/F1 9.00 Tf
+74.00 504.24 Td
+(Detailed item-by-item breakdown of the official requirements versus current implementation) Tj
+ET
+q
+0.80 w
+0.850 0.880 0.920 RG
+42.00 497.89 m 553.28 497.89 l S
+Q
+q
+0.80 w
+0.150 0.250 0.420 RG
+0.080 0.160 0.300 rg
+42.00 467.89 511.28 22.00 re
+B
+Q
+BT
+1.000 1.000 1.000 rg
+/F2 8.50 Tf
+48.00 476.66 Td
+(Hackathon Requirement) Tj
+ET
+BT
+1.000 1.000 1.000 rg
+/F2 8.50 Tf
+163.00 476.66 Td
+(Current ToolToll Implementation) Tj
+ET
+BT
+1.000 1.000 1.000 rg
+/F2 8.50 Tf
+358.00 476.66 Td
+(Status) Tj
+ET
+BT
+1.000 1.000 1.000 rg
+/F2 8.50 Tf
+408.00 476.66 Td
+(Suggested Action) Tj
+ET
+q
+0.50 w
+0.850 0.880 0.920 RG
+1.000 1.000 1.000 rg
+42.00 409.89 511.28 58.00 re
+B
+Q
+BT
+0.050 0.150 0.300 rg
+/F2 8.50 Tf
+48.00 454.66 Td
+(PayPal Developer) Tj
+ET
+BT
+0.050 0.150 0.300 rg
+/F2 8.50 Tf
+48.00 443.16 Td
+(Platform \(Sandbox\)) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+163.00 454.66 Td
+(Server-side Orders creation) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+163.00 443.16 Td
+(\(/api/paypal/orders\), capture \(/capture\),) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+163.00 431.66 Td
+(and webhook deduplication \(/webhooks\).) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+163.00 420.16 Td
+(Stored in append-only ledger.) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+358.00 454.66 Td
+(Passed) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+408.00 454.66 Td
+(Embed official PayPal Smart) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+408.00 443.16 Td
+(Payment Buttons) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+408.00 431.66 Td
+(\(@paypal/react-paypal-js\) in) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+408.00 420.16 Td
+(UI.) Tj
+ET
+q
+0.50 w
+0.850 0.880 0.920 RG
+0.970 0.980 0.990 rg
+42.00 351.89 511.28 58.00 re
+B
+Q
+BT
+0.050 0.150 0.300 rg
+/F2 8.50 Tf
+48.00 396.66 Td
+(PayPal Central to) Tj
+ET
+BT
+0.050 0.150 0.300 rg
+/F2 8.50 Tf
+48.00 385.16 Td
+(Project) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+163.00 396.66 Td
+(PayPal is the primary fiat on-ramp) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+163.00 385.16 Td
+(funding the entire agent) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+163.00 373.66 Td
+(micro-transaction economy. All API) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+163.00 362.16 Td
+(consumption draws from this balance.) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+358.00 396.66 Td
+(Passed) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+408.00 396.66 Td
+(Add live PayPal Payouts API) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+408.00 385.16 Td
+(\(/v1/payments/payouts\) for) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+408.00 373.66 Td
+(creator earnings withdrawals.) Tj
+ET
+q
+0.50 w
+0.850 0.880 0.920 RG
+1.000 1.000 1.000 rg
+42.00 293.89 511.28 58.00 re
+B
+Q
+BT
+0.050 0.150 0.300 rg
+/F2 8.50 Tf
+48.00 338.66 Td
+(AI Tool / Model) Tj
+ET
+BT
+0.050 0.150 0.300 rg
+/F2 8.50 Tf
+48.00 327.16 Td
+(Integration) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+163.00 338.66 Td
+(Groq \(llama-3.3-70b\), Anthropic Claude,) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+163.00 327.16 Td
+(and local deterministic fallback;) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+163.00 315.66 Td
+(Anthropic Model Context Protocol \(MCP\)) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+163.00 304.16 Td
+(server for autonomous agents.) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+358.00 338.66 Td
+(Passed) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+408.00 338.66 Td
+(Highlight semantic tool) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+408.00 327.16 Td
+(discovery and AI price advisor) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+408.00 315.66 Td
+(in the live playground.) Tj
+ET
+q
+0.50 w
+0.850 0.880 0.920 RG
+0.970 0.980 0.990 rg
+42.00 247.39 511.28 46.50 re
+B
+Q
+BT
+0.050 0.150 0.300 rg
+/F2 8.50 Tf
+48.00 280.66 Td
+(Broad PayPal Family) Tj
+ET
+BT
+0.050 0.150 0.300 rg
+/F2 8.50 Tf
+48.00 269.16 Td
+(\(Venmo, Braintree,) Tj
+ET
+BT
+0.050 0.150 0.300 rg
+/F2 8.50 Tf
+48.00 257.66 Td
+(etc.\)) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+163.00 280.66 Td
+(Base PayPal Checkout is active; mock) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+163.00 269.16 Td
+(creator payouts in place; risk heuristics) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+163.00 257.66 Td
+(implemented for threat analysis.) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+358.00 280.66 Td
+(Partial) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+408.00 280.66 Td
+(Enable Venmo via PayPal Smart) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+408.00 269.16 Td
+(Buttons; pitch risk heuristics) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+408.00 257.66 Td
+(as Simility-inspired defense.) Tj
+ET
+q
+0.50 w
+0.850 0.880 0.920 RG
+1.000 1.000 1.000 rg
+42.00 189.39 511.28 58.00 re
+B
+Q
+BT
+0.050 0.150 0.300 rg
+/F2 8.50 Tf
+48.00 234.16 Td
+(Sponsor Tool) Tj
+ET
+BT
+0.050 0.150 0.300 rg
+/F2 8.50 Tf
+48.00 222.66 Td
+(Integrations) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+163.00 234.16 Td
+(Architected for cloud deployment; OpenAPI) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+163.00 222.66 Td
+(spec live; data tables present in UI, but) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+163.00 211.16 Td
+(sponsor tools not yet leveraged for prize) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+163.00 199.66 Td
+(bounties.) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+358.00 234.16 Td
+(Opportunity) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+408.00 234.16 Td
+(Integrate AG Grid, Postman) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+408.00 222.66 Td
+(Collection, and Render) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+408.00 211.16 Td
+(Blueprint to capture bounties.) Tj
+ET
+q
+0.50 w
+0.850 0.880 0.920 RG
+0.970 0.980 0.990 rg
+42.00 131.39 511.28 58.00 re
+B
+Q
+BT
+0.050 0.150 0.300 rg
+/F2 8.50 Tf
+48.00 176.16 Td
+(Functionality &) Tj
+ET
+BT
+0.050 0.150 0.300 rg
+/F2 8.50 Tf
+48.00 164.66 Td
+(Reproducibility) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+163.00 176.16 Td
+(Multi-tier container architecture \(Docker) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+163.00 164.66 Td
+(Compose\), Prisma migrations, robust local) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+163.00 153.16 Td
+(fallback seed modes for zero-friction) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+163.00 141.66 Td
+(judge evaluation.) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+358.00 176.16 Td
+(Passed) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+408.00 176.16 Td
+(Provide 1-click test script;) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+408.00 164.66 Td
+(ensure offline fallback works) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+408.00 153.16 Td
+(if keys are omitted.) Tj
+ET
+q
+0.50 w
+0.850 0.880 0.920 RG
+1.000 1.000 1.000 rg
+42.00 84.89 511.28 46.50 re
+B
+Q
+BT
+0.050 0.150 0.300 rg
+/F2 8.50 Tf
+48.00 118.16 Td
+(New & Existing) Tj
+ET
+BT
+0.050 0.150 0.300 rg
+/F2 8.50 Tf
+48.00 106.66 Td
+(Clarification) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+163.00 118.16 Td
+(Brand-new architecture designed for AI) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+163.00 106.66 Td
+(agent pay-per-use economy with integer) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+163.00 95.16 Td
+(micro-USD precision.) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+358.00 118.16 Td
+(Passed) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+408.00 118.16 Td
+(Clearly document hackathon) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+408.00 106.66 Td
+(timeline in Devpost submission) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+408.00 95.16 Td
+(text and video.) Tj
+ET
+q
+0.8 w
+0.85 0.88 0.92 RG
+42.00 33.00 m 553.28 33.00 l S
+Q
+BT
+0.45 0.52 0.60 rg
+/F1 8.0 Tf
+42.00 21.00 Td
+(ToolToll  --  Autonomous AI Agent API Marketplace with PayPal Ledger) Tj
+ET
+BT
+0.45 0.52 0.60 rg
+/F2 8.0 Tf
+493.28 21.00 Td
+(Page 1 of 4) Tj
+ET
+
+endstream
+endobj
+8 0 obj
+<< /Length 9378 >>
+stream
+q
+0.80 w
+0.850 0.880 0.920 RG
+42.00 796.89 m 553.28 796.89 l S
+Q
+BT
+0.350 0.420 0.520 rg
+/F2 8.00 Tf
+42.00 804.09 Td
+(TOOLTOLL  |  PayPal & AI Hackathon Evaluation & Integration Roadmap) Tj
+ET
+BT
+0.550 0.600 0.680 rg
+/F1 8.00 Tf
+403.28 804.09 Td
+(CONFIDENTIAL SUBMISSION DRAFT) Tj
+ET
+q
+1.00 w
+0.000 0.440 0.730 rg
+42.00 759.89 24.00 20.00 re
+f
+Q
+BT
+1.000 1.000 1.000 rg
+/F2 10.00 Tf
+47.00 767.39 Td
+(2) Tj
+ET
+BT
+0.060 0.120 0.240 rg
+/F2 13.00 Tf
+74.00 764.84 Td
+(PayPal Integration Deep Dive & Expansion Roadmap) Tj
+ET
+BT
+0.400 0.480 0.580 rg
+/F1 9.00 Tf
+74.00 750.24 Td
+(Technical examination of payments/ledger architecture and high-impact upgrades) Tj
+ET
+q
+0.80 w
+0.850 0.880 0.920 RG
+42.00 743.89 m 553.28 743.89 l S
+Q
+q
+0.80 w
+0.780 0.870 0.980 RG
+0.960 0.980 1.000 rg
+42.00 556.89 511.28 179.00 re
+B
+Q
+q
+1.00 w
+0.000 0.440 0.730 rg
+42.00 556.89 4.00 179.00 re
+f
+Q
+BT
+0.030 0.220 0.450 rg
+/F2 10.50 Tf
+56.00 718.97 Td
+(Current PayPal Architecture in Backend & Frontend) Tj
+ET
+q
+1.00 w
+0.000 0.440 0.730 rg
+459.78 714.89 81.50 14.00 re
+f
+Q
+BT
+1.000 1.000 1.000 rg
+/F2 7.50 Tf
+464.78 719.51 Td
+(CURRENT STATE) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 703.24 Td
+(1. Server-Side Order Creation: Authenticated POST /api/paypal/orders obtains sandbox OAuth tokens and) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 690.24 Td
+(calls PayPal /v2/checkout/orders with intent: CAPTURE and custom_id mapped to user wallet.) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 664.24 Td
+(2. Atomic Order Capture & Ledger Credit: POST /api/paypal/orders/:orderId/capture commits raw capture) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 651.24 Td
+(data, updates order state to COMPLETED, and executes double-entry credit top-up in micro-USD.) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 625.24 Td
+(3. Webhook Deduplication: POST /api/webhooks/paypal verifies unique event IDs and checks against) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 612.24 Td
+(existing top-up transactions, preventing double-credit attacks \(Hackathon Invariant 11\).) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 586.24 Td
+(4. Current Gaps: Frontend uses simulated popup or auto-capture rather than native PayPal JS SDK;) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 573.24 Td
+(creator payouts use simulated mock adapter without live /v1/payments/payouts invocation.) Tj
+ET
+q
+1.00 w
+0.000 0.440 0.730 rg
+46.00 536.89 6.00 6.00 re
+f
+Q
+BT
+0.060 0.150 0.280 rg
+/F2 9.50 Tf
+58.00 536.82 Td
+(Upgrade 1: Official PayPal Smart Payment Buttons \(@paypal/react-paypal-js\)) Tj
+ET
+q
+0.60 w
+0.700 0.820 0.950 RG
+0.920 0.950 0.980 rg
+484.08 531.89 65.20 13.00 re
+B
+Q
+BT
+0.050 0.350 0.650 rg
+/F2 7.50 Tf
+488.08 536.51 Td
+(CRITICAL UX) Tj
+ET
+BT
+0.250 0.300 0.380 rg
+/F1 9.00 Tf
+58.00 523.24 Td
+(Replace simulated modal button with native PayPal, Venmo, and Pay Later buttons inside TopupModal.tsx.) Tj
+ET
+BT
+0.250 0.300 0.380 rg
+/F1 9.00 Tf
+58.00 510.74 Td
+(Provides an authentic, frictionless payment overlay with zero browser popup blocks.) Tj
+ET
+q
+1.00 w
+0.000 0.440 0.730 rg
+46.00 491.89 6.00 6.00 re
+f
+Q
+BT
+0.060 0.150 0.280 rg
+/F2 9.50 Tf
+58.00 491.81 Td
+(Upgrade 2: Live PayPal Sandbox Payouts API for Creators \(/v1/payments/payouts\)) Tj
+ET
+q
+0.60 w
+0.700 0.820 0.950 RG
+0.920 0.950 0.980 rg
+484.08 486.89 65.20 13.00 re
+B
+Q
+BT
+0.050 0.350 0.650 rg
+/F2 7.50 Tf
+488.08 491.51 Td
+(HIGH IMPACT) Tj
+ET
+BT
+0.250 0.300 0.380 rg
+/F1 9.00 Tf
+58.00 478.24 Td
+(Implement real creator payouts. When an API developer clicks 'Withdraw Earnings', ToolToll triggers a) Tj
+ET
+BT
+0.250 0.300 0.380 rg
+/F1 9.00 Tf
+58.00 465.74 Td
+(sandbox payout batch directly to their PayPal email, completing a closed-loop micro-economy.) Tj
+ET
+q
+1.00 w
+0.000 0.440 0.730 rg
+46.00 446.89 6.00 6.00 re
+f
+Q
+BT
+0.060 0.150 0.280 rg
+/F2 9.50 Tf
+58.00 446.81 Td
+(Upgrade 3: Autonomous 'Auto-Refill' Buffer \(PayPal Vault / Subscriptions\)) Tj
+ET
+q
+0.60 w
+0.700 0.820 0.950 RG
+0.920 0.950 0.980 rg
+473.68 441.89 75.60 13.00 re
+B
+Q
+BT
+0.050 0.350 0.650 rg
+/F2 7.50 Tf
+477.68 446.51 Td
+(AI INNOVATION) Tj
+ET
+BT
+0.250 0.300 0.380 rg
+/F1 9.00 Tf
+58.00 433.24 Td
+(Enable agents to run continuously by configuring an automatic refill rule: 'When wallet drops below) Tj
+ET
+BT
+0.250 0.300 0.380 rg
+/F1 9.00 Tf
+58.00 420.74 Td
+($2.00, automatically capture $10.00 via PayPal Vaulted Payment Methods'. Eliminates agent stalling.) Tj
+ET
+q
+1.00 w
+0.000 0.440 0.730 rg
+46.00 401.89 6.00 6.00 re
+f
+Q
+BT
+0.060 0.150 0.280 rg
+/F2 9.50 Tf
+58.00 401.81 Td
+(Upgrade 4: Simility-Inspired Fraud & Abuse Detection) Tj
+ET
+q
+0.60 w
+0.700 0.820 0.950 RG
+0.920 0.950 0.980 rg
+473.68 396.89 75.60 13.00 re
+B
+Q
+BT
+0.050 0.350 0.650 rg
+/F2 7.50 Tf
+477.68 401.51 Td
+(PAYPAL FAMILY) Tj
+ET
+BT
+0.250 0.300 0.380 rg
+/F1 9.00 Tf
+58.00 388.24 Td
+(Position ToolToll's Neural Phishing Shield and rate-limiting gateway as a Simility-inspired transaction) Tj
+ET
+BT
+0.250 0.300 0.380 rg
+/F1 9.00 Tf
+58.00 375.74 Td
+(risk scoring system that inspects prompts and freezes abusive agent loops before funds are depleted.) Tj
+ET
+q
+1.00 w
+0.000 0.440 0.730 rg
+46.00 356.89 6.00 6.00 re
+f
+Q
+BT
+0.060 0.150 0.280 rg
+/F2 9.50 Tf
+58.00 356.81 Td
+(Upgrade 5: Webhook Dispute & Refund Handling) Tj
+ET
+q
+0.60 w
+0.700 0.820 0.950 RG
+0.920 0.950 0.980 rg
+473.68 351.89 75.60 13.00 re
+B
+Q
+BT
+0.050 0.350 0.650 rg
+/F2 7.50 Tf
+477.68 356.51 Td
+(FINTECH RIGOR) Tj
+ET
+BT
+0.250 0.300 0.380 rg
+/F1 9.00 Tf
+58.00 343.24 Td
+(Handle PAYMENT.CAPTURE.REFUNDED and CUSTOMER.DISPUTE.CREATED in paypalController.ts, recording) Tj
+ET
+BT
+0.250 0.300 0.380 rg
+/F1 9.00 Tf
+58.00 330.74 Td
+(compensating DEBIT ledger entries to maintain mathematical audit consistency.) Tj
+ET
+q
+1.00 w
+0.000 0.440 0.730 rg
+42.00 299.89 24.00 20.00 re
+f
+Q
+BT
+1.000 1.000 1.000 rg
+/F2 10.00 Tf
+47.00 307.39 Td
+(3) Tj
+ET
+BT
+0.060 0.120 0.240 rg
+/F2 13.00 Tf
+74.00 304.84 Td
+(Sponsor Tools Integration Strategy \(Prize Bounties\)) Tj
+ET
+BT
+0.400 0.480 0.580 rg
+/F1 9.00 Tf
+74.00 290.24 Td
+(Actionable roadmap to integrate hackathon sponsor tools and compete for specialized prizes) Tj
+ET
+q
+0.80 w
+0.850 0.880 0.920 RG
+42.00 283.89 m 553.28 283.89 l S
+Q
+q
+0.80 w
+0.980 0.850 0.600 RG
+1.000 0.980 0.930 rg
+42.00 200.89 511.28 75.00 re
+B
+Q
+q
+1.00 w
+0.850 0.480 0.050 rg
+42.00 200.89 4.00 75.00 re
+f
+Q
+BT
+0.450 0.240 0.020 rg
+/F2 10.50 Tf
+56.00 258.97 Td
+(Why Sponsor Tool Integrations Matter for Hackathons) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 243.24 Td
+(Hackathons typically allocate substantial prize pools to specific sponsor categories \(e.g. Best Use) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 230.24 Td
+(of AG Grid, Best Postman Collection, Best Render Deployment\). Because many teams only build for the) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 217.24 Td
+(general track, competing in sponsor categories drastically multiplies your winning probability.) Tj
+ET
+q
+0.80 w
+0.150 0.250 0.420 RG
+0.080 0.160 0.300 rg
+42.00 168.89 511.28 22.00 re
+B
+Q
+BT
+1.000 1.000 1.000 rg
+/F2 8.50 Tf
+48.00 177.66 Td
+(Sponsor Tool) Tj
+ET
+BT
+1.000 1.000 1.000 rg
+/F2 8.50 Tf
+133.00 177.66 Td
+(Strategic Fit for ToolToll) Tj
+ET
+BT
+1.000 1.000 1.000 rg
+/F2 8.50 Tf
+273.00 177.66 Td
+(Concrete Integration Steps) Tj
+ET
+BT
+1.000 1.000 1.000 rg
+/F2 8.50 Tf
+479.28 177.66 Td
+(Prize Category) Tj
+ET
+q
+0.50 w
+0.850 0.880 0.920 RG
+1.000 1.000 1.000 rg
+42.00 110.89 511.28 58.00 re
+B
+Q
+BT
+0.050 0.150 0.300 rg
+/F2 8.50 Tf
+48.00 155.66 Td
+(AG Grid) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+133.00 155.66 Td
+(ToolToll manages dense) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+133.00 144.16 Td
+(financial data: double-entry) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+133.00 132.66 Td
+(ledgers, creator earnings,) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+133.00 121.16 Td
+(and admin logs.) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+273.00 155.66 Td
+(Install ag-grid-react. Embed dark-themed AG) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+273.00 144.16 Td
+(Grid on WalletView.tsx ledger with column) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+273.00 132.66 Td
+(filtering, micro-USD sorting, and 1-click) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+273.00 121.16 Td
+(CSV export.) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+479.28 155.66 Td
+(Best Financial) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+479.28 144.16 Td
+(UI) Tj
+ET
+q
+0.50 w
+0.850 0.880 0.920 RG
+0.970 0.980 0.990 rg
+42.00 52.89 511.28 58.00 re
+B
+Q
+BT
+0.050 0.150 0.300 rg
+/F2 8.50 Tf
+48.00 97.66 Td
+(Postman) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+133.00 97.66 Td
+(ToolToll is fundamentally an) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+133.00 86.16 Td
+(API marketplace and proxy) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+133.00 74.66 Td
+(execution gateway.) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+273.00 97.66 Td
+(Publish a comprehensive Postman Collection) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+273.00 86.16 Td
+(\(v2.1\) + Environment covering Auth, Tools,) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+273.00 74.66 Td
+(PayPal, and MCP. Add 'Run in Postman' badge) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+273.00 63.16 Td
+(in UI & README.) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+479.28 97.66 Td
+(Best API Docs) Tj
+ET
+q
+0.8 w
+0.85 0.88 0.92 RG
+42.00 33.00 m 553.28 33.00 l S
+Q
+BT
+0.45 0.52 0.60 rg
+/F1 8.0 Tf
+42.00 21.00 Td
+(ToolToll  --  Autonomous AI Agent API Marketplace with PayPal Ledger) Tj
+ET
+BT
+0.45 0.52 0.60 rg
+/F2 8.0 Tf
+493.28 21.00 Td
+(Page 2 of 4) Tj
+ET
+
+endstream
+endobj
+9 0 obj
+<< /Length 8321 >>
+stream
+q
+0.80 w
+0.850 0.880 0.920 RG
+42.00 796.89 m 553.28 796.89 l S
+Q
+BT
+0.350 0.420 0.520 rg
+/F2 8.00 Tf
+42.00 804.09 Td
+(TOOLTOLL  |  PayPal & AI Hackathon Evaluation & Integration Roadmap) Tj
+ET
+BT
+0.550 0.600 0.680 rg
+/F1 8.00 Tf
+403.28 804.09 Td
+(CONFIDENTIAL SUBMISSION DRAFT) Tj
+ET
+q
+0.80 w
+0.150 0.250 0.420 RG
+0.080 0.160 0.300 rg
+42.00 759.89 511.28 22.00 re
+B
+Q
+BT
+1.000 1.000 1.000 rg
+/F2 8.50 Tf
+48.00 768.66 Td
+(Sponsor Tool \(cont.\)) Tj
+ET
+BT
+1.000 1.000 1.000 rg
+/F2 8.50 Tf
+133.00 768.66 Td
+(Strategic Fit for ToolToll \(cont.\)) Tj
+ET
+BT
+1.000 1.000 1.000 rg
+/F2 8.50 Tf
+273.00 768.66 Td
+(Concrete Integration Steps \(cont.\)) Tj
+ET
+BT
+1.000 1.000 1.000 rg
+/F2 8.50 Tf
+479.28 768.66 Td
+(Prize Category \(cont.\)) Tj
+ET
+q
+0.50 w
+0.850 0.880 0.920 RG
+1.000 1.000 1.000 rg
+42.00 701.89 511.28 58.00 re
+B
+Q
+BT
+0.050 0.150 0.300 rg
+/F2 8.50 Tf
+48.00 746.66 Td
+(Render) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+133.00 746.66 Td
+(Application requires) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+133.00 735.16 Td
+(consistent multi-tier) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+133.00 723.66 Td
+(deployment \(Node, Postgres,) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+133.00 712.16 Td
+(React\).) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+273.00 746.66 Td
+(Add render.yaml Blueprint at repo root) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+273.00 735.16 Td
+(defining managed Postgres, backend service,) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+273.00 723.66 Td
+(and frontend static site. Add 1-click) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+273.00 712.16 Td
+('Deploy to Render' button.) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+479.28 746.66 Td
+(Best Cloud) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+479.28 735.16 Td
+(Deploy) Tj
+ET
+q
+0.50 w
+0.850 0.880 0.920 RG
+0.970 0.980 0.990 rg
+42.00 643.89 511.28 58.00 re
+B
+Q
+BT
+0.050 0.150 0.300 rg
+/F2 8.50 Tf
+48.00 688.66 Td
+(APIMatic) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+133.00 688.66 Td
+(ToolToll exports OpenAPI 3.0) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+133.00 677.16 Td
+(specification at /api/docs.) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+273.00 688.66 Td
+(Generate multi-language client SDKs) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+273.00 677.16 Td
+(\(TypeScript, Python\) from ToolToll OpenAPI) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+273.00 665.66 Td
+(spec. Provide SDK download buttons on tool) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+273.00 654.16 Td
+(catalog views.) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+479.28 688.66 Td
+(Developer) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+479.28 677.16 Td
+(Experience) Tj
+ET
+q
+0.50 w
+0.850 0.880 0.920 RG
+1.000 1.000 1.000 rg
+42.00 585.89 511.28 58.00 re
+B
+Q
+BT
+0.050 0.150 0.300 rg
+/F2 8.50 Tf
+48.00 630.66 Td
+(Zapier) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+133.00 630.66 Td
+(Agent spend events and) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+133.00 619.16 Td
+(creator payouts require) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+133.00 607.66 Td
+(automated notifications.) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+273.00 630.66 Td
+(Add Zapier outbound webhook triggers: 1\)) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+273.00 619.16 Td
+(Wallet low-balance alert, 2\) Creator payout) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+273.00 607.66 Td
+(confirmed, 3\) Human-approval spend) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+273.00 596.16 Td
+(threshold exceeded.) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+479.28 630.66 Td
+(Best Automation) Tj
+ET
+q
+0.50 w
+0.850 0.880 0.920 RG
+0.970 0.980 0.990 rg
+42.00 527.89 511.28 58.00 re
+B
+Q
+BT
+0.050 0.150 0.300 rg
+/F2 8.50 Tf
+48.00 572.66 Td
+(Bryntum) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+133.00 572.66 Td
+(Multi-step agent execution) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+133.00 561.16 Td
+(workflows require visual) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+133.00 549.66 Td
+(timeline tracking.) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+273.00 572.66 Td
+(Use Bryntum Scheduler / Timeline in) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+273.00 561.16 Td
+(PlaygroundView.tsx to render agent step) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+273.00 549.66 Td
+(sequence, latency breakdown \(ms\), and cost) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+273.00 538.16 Td
+(per millisecond.) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+479.28 572.66 Td
+(Best) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+479.28 561.16 Td
+(Visualization) Tj
+ET
+q
+0.50 w
+0.850 0.880 0.920 RG
+1.000 1.000 1.000 rg
+42.00 469.89 511.28 58.00 re
+B
+Q
+BT
+0.050 0.150 0.300 rg
+/F2 8.50 Tf
+48.00 514.66 Td
+(Elastic) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+133.00 514.66 Td
+(Tool marketplace requires) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+133.00 503.16 Td
+(semantic & keyword search) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+133.00 491.66 Td
+(across tags and) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+133.00 480.16 Td
+(descriptions.) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+273.00 514.66 Td
+(Integrate Elasticsearch BM25 indexing for) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+273.00 503.16 Td
+(tool discovery and centralized audit log) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+273.00 491.66 Td
+(query aggregation.) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+479.28 514.66 Td
+(Best Search /) Tj
+ET
+BT
+0.220 0.260 0.320 rg
+/F1 8.50 Tf
+479.28 503.16 Td
+(AI) Tj
+ET
+q
+1.00 w
+0.000 0.440 0.730 rg
+42.00 435.89 24.00 20.00 re
+f
+Q
+BT
+1.000 1.000 1.000 rg
+/F2 10.00 Tf
+47.00 443.39 Td
+(4) Tj
+ET
+BT
+0.060 0.120 0.240 rg
+/F2 13.00 Tf
+74.00 440.84 Td
+(Recommended Action Plan & Submission Checklist) Tj
+ET
+BT
+0.400 0.480 0.580 rg
+/F1 9.00 Tf
+74.00 426.24 Td
+(Step-by-step roadmap to finalize code, recording, and submission deliverables) Tj
+ET
+q
+0.80 w
+0.850 0.880 0.920 RG
+42.00 419.89 m 553.28 419.89 l S
+Q
+q
+0.80 w
+0.720 0.920 0.780 RG
+0.950 0.990 0.960 rg
+42.00 232.89 511.28 179.00 re
+B
+Q
+q
+1.00 w
+0.100 0.650 0.350 rg
+42.00 232.89 4.00 179.00 re
+f
+Q
+BT
+0.040 0.350 0.160 rg
+/F2 10.50 Tf
+56.00 394.96 Td
+(Priority 1: Polish PayPal Experience & Visual Proof \(Next 2-4 Hours\)) Tj
+ET
+q
+1.00 w
+0.100 0.650 0.350 rg
+443.28 390.89 98.00 14.00 re
+f
+Q
+BT
+1.000 1.000 1.000 rg
+/F2 7.50 Tf
+448.28 395.51 Td
+(IMMEDIATE ACTION) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 379.24 Td
+(1. Embed @paypal/react-paypal-js in TopupModal.tsx so judges see the official PayPal and Venmo) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 366.24 Td
+(buttons directly inside the app.) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 340.24 Td
+(2. Connect sandbox credentials \(set PAYMENT_ADAPTER=paypal in .env\) and verify live capture flow on) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 327.24 Td
+(video.) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 301.24 Td
+(3. Add PayPal Payouts API endpoint in creatorController.ts for creator balance withdrawal,) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 288.24 Td
+(demonstrating the complete economic loop.) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 262.24 Td
+(4. Verify that the Admin Financial Reconciliation table displays PayPal Captured vs. Ledger Credits) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 249.24 Td
+(accurately.) Tj
+ET
+q
+0.80 w
+0.780 0.870 0.980 RG
+0.960 0.980 1.000 rg
+42.00 108.89 511.28 114.00 re
+B
+Q
+q
+1.00 w
+0.000 0.440 0.730 rg
+42.00 108.89 4.00 114.00 re
+f
+Q
+BT
+0.030 0.220 0.450 rg
+/F2 10.50 Tf
+56.00 205.97 Td
+(Priority 2: Embed Top 3 Sponsor Integrations \(Next 3-6 Hours\)) Tj
+ET
+q
+1.00 w
+0.000 0.440 0.730 rg
+454.28 201.89 87.00 14.00 re
+f
+Q
+BT
+1.000 1.000 1.000 rg
+/F2 7.50 Tf
+459.28 206.51 Td
+(SPONSOR PRIZES) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 190.24 Td
+(1. AG Grid: Replace ledger table in WalletView.tsx with an interactive AG Grid table with CSV export.) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 164.24 Td
+(2. Postman: Export tooltoll.postman_collection.json and include 'Run in Postman' button in frontend) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 151.24 Td
+(navbar and README.) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 125.24 Td
+(3. Render: Commit render.yaml blueprint with one-click deployment instructions.) Tj
+ET
+q
+0.8 w
+0.85 0.88 0.92 RG
+42.00 33.00 m 553.28 33.00 l S
+Q
+BT
+0.45 0.52 0.60 rg
+/F1 8.0 Tf
+42.00 21.00 Td
+(ToolToll  --  Autonomous AI Agent API Marketplace with PayPal Ledger) Tj
+ET
+BT
+0.45 0.52 0.60 rg
+/F2 8.0 Tf
+493.28 21.00 Td
+(Page 3 of 4) Tj
+ET
+
+endstream
+endobj
+10 0 obj
+<< /Length 2501 >>
+stream
+q
+0.80 w
+0.850 0.880 0.920 RG
+42.00 796.89 m 553.28 796.89 l S
+Q
+BT
+0.350 0.420 0.520 rg
+/F2 8.00 Tf
+42.00 804.09 Td
+(TOOLTOLL  |  PayPal & AI Hackathon Evaluation & Integration Roadmap) Tj
+ET
+BT
+0.550 0.600 0.680 rg
+/F1 8.00 Tf
+403.28 804.09 Td
+(CONFIDENTIAL SUBMISSION DRAFT) Tj
+ET
+q
+0.80 w
+0.980 0.850 0.600 RG
+1.000 0.980 0.930 rg
+42.00 524.89 511.28 257.00 re
+B
+Q
+q
+1.00 w
+0.850 0.480 0.050 rg
+42.00 524.89 4.00 257.00 re
+f
+Q
+BT
+0.450 0.240 0.020 rg
+/F2 10.50 Tf
+56.00 764.97 Td
+(Priority 3: Demo Video Script & Devpost Text \(Final Polish\)) Tj
+ET
+q
+1.00 w
+0.850 0.480 0.050 rg
+437.78 760.89 103.50 14.00 re
+f
+Q
+BT
+1.000 1.000 1.000 rg
+/F2 7.50 Tf
+442.78 765.51 Td
+(VIDEO WALKTHROUGH) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 749.24 Td
+(Structure your 3-minute video around a compelling story:) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 723.24 Td
+(- Hook \(0:00 - 0:30\): 'AI agents are performing complex tasks, but cannot buy the APIs they need.) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 710.24 Td
+(ToolToll provides the autonomous payment rails powered by PayPal.') Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 684.24 Td
+(- Consumer Flow \(0:30 - 1:15\): Funding the wallet using PayPal Sandbox & Venmo buttons; setting) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 671.24 Td
+(per-call and monthly agent budget caps.) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 645.24 Td
+(- Autonomous Agent in Action \(1:15 - 2:00\): Prompt: 'Analyze customer message and translate to) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 632.24 Td
+(French'. Agent uses MCP to discover tools, rank prices, and execute sub-cent calls against the) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 619.24 Td
+(ledger.) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 593.24 Td
+(- Financial Rigor & Creator Payout \(2:00 - 2:45\): Show append-only ledger entries; switch to Creator) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 580.24 Td
+(view to show earned micro-USD and withdraw via PayPal Payouts.) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 554.24 Td
+(- Closing \(2:45 - 3:00\): Showcase AG Grid ledger analytics, Postman collection, and Render) Tj
+ET
+BT
+0.200 0.250 0.320 rg
+/F1 9.00 Tf
+56.00 541.24 Td
+(deployment.) Tj
+ET
+q
+0.8 w
+0.85 0.88 0.92 RG
+42.00 33.00 m 553.28 33.00 l S
+Q
+BT
+0.45 0.52 0.60 rg
+/F1 8.0 Tf
+42.00 21.00 Td
+(ToolToll  --  Autonomous AI Agent API Marketplace with PayPal Ledger) Tj
+ET
+BT
+0.45 0.52 0.60 rg
+/F2 8.0 Tf
+493.28 21.00 Td
+(Page 4 of 4) Tj
+ET
+
+endstream
+endobj
+11 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+12 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+13 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique >>
+endobj
+14 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>
+endobj
+xref
+0 15
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000139 00000 n 
+0000000305 00000 n 
+0000000471 00000 n 
+0000000637 00000 n 
+0000000804 00000 n 
+0000010876 00000 n 
+0000020306 00000 n 
+0000028679 00000 n 
+0000031233 00000 n 
+0000031304 00000 n 
+0000031380 00000 n 
+0000031459 00000 n 
+trailer
+<< /Size 15 /Root 1 0 R >>
+startxref
+31528
+%%EOF

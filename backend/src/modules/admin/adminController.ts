@@ -283,6 +283,208 @@ adminRouter.get('/audit-logs', async (_req: Request, res: Response, next) => {
   }
 });
 
+// GET /api/admin/commission
+adminRouter.get('/commission', async (_req: Request, res: Response, next) => {
+  try {
+    const setting = await prisma.platformSetting.findUnique({
+      where: { key: 'PLATFORM_FEE_BPS' },
+    });
+    const bps = setting ? parseInt(setting.value, 10) : 1000;
+    return sendSuccess(res, {
+      platformFeeBps: bps,
+      ratePercentage: (bps / 100).toFixed(2),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/admin/creators (Listing: all creators and their respective APIs)
+adminRouter.get('/creators', async (_req: Request, res: Response, next) => {
+  try {
+    const creators = await prisma.user.findMany({
+      where: {
+        OR: [{ isCreator: true }, { tools: { some: {} } }],
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        createdAt: true,
+        tools: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            category: true,
+            shortDescription: true,
+            baseUrl: true,
+            endpointPath: true,
+            httpMethod: true,
+            priceMicroUsd: true,
+            status: true,
+            createdAt: true,
+            _count: { select: { calls: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+        creatorEarnings: {
+          select: {
+            netMicroUsd: true,
+            grossMicroUsd: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const formatted = creators.map((c) => {
+      const totalNetEarningsMicroUsd = c.creatorEarnings.reduce((acc, e) => acc + e.netMicroUsd, 0n);
+      const totalGrossEarningsMicroUsd = c.creatorEarnings.reduce((acc, e) => acc + e.grossMicroUsd, 0n);
+      return {
+        id: c.id,
+        name: c.name,
+        email: c.email,
+        createdAt: c.createdAt,
+        totalNetEarningsMicroUsd: totalNetEarningsMicroUsd.toString(),
+        totalGrossEarningsMicroUsd: totalGrossEarningsMicroUsd.toString(),
+        totalTools: c.tools.length,
+        tools: c.tools.map((t) => ({
+          ...t,
+          priceMicroUsd: t.priceMicroUsd.toString(),
+          callsCount: t._count.calls,
+        })),
+      };
+    });
+
+    return sendSuccess(res, formatted);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/admin/consumers (Listing: all data about consumers)
+adminRouter.get('/consumers', async (_req: Request, res: Response, next) => {
+  try {
+    const consumers = await prisma.user.findMany({
+      where: {
+        OR: [{ isConsumer: true }, { agents: { some: {} } }],
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        createdAt: true,
+        wallet: {
+          select: {
+            balance: true,
+            reservedBalance: true,
+          },
+        },
+        agents: {
+          select: {
+            id: true,
+            name: true,
+            isActive: true,
+            createdAt: true,
+            _count: { select: { toolCalls: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const formatted = await Promise.all(
+      consumers.map(async (c) => {
+        const agentIds = c.agents.map((a) => a.id);
+        const calls = await prisma.toolCall.findMany({
+          where: { agentId: { in: agentIds } },
+          select: { priceMicroUsd: true, status: true },
+        });
+
+        const totalSpentMicroUsd = calls.reduce((acc, call) => acc + call.priceMicroUsd, 0n);
+        const successfulCalls = calls.filter((call) => call.status === 'SUCCESS').length;
+
+        return {
+          id: c.id,
+          name: c.name,
+          email: c.email,
+          createdAt: c.createdAt,
+          walletBalanceMicroUsd: c.wallet ? c.wallet.balance.toString() : '0',
+          walletReservedMicroUsd: c.wallet ? c.wallet.reservedBalance.toString() : '0',
+          agentsCount: c.agents.length,
+          agents: c.agents.map((a) => ({
+            id: a.id,
+            name: a.name,
+            isActive: a.isActive,
+            totalCalls: a._count.toolCalls,
+          })),
+          totalCallsCount: calls.length,
+          successfulCallsCount: successfulCalls,
+          totalSpentMicroUsd: totalSpentMicroUsd.toString(),
+        };
+      })
+    );
+
+    return sendSuccess(res, formatted);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/admin/transactions (Earnings: transaction history of called APIs and admin profit)
+adminRouter.get('/transactions', async (_req: Request, res: Response, next) => {
+  try {
+    const limit = parseInt(String(_req.query.limit || '100'), 10);
+    const calls = await prisma.toolCall.findMany({
+      take: isNaN(limit) ? 100 : Math.min(limit, 200),
+      orderBy: { createdAt: 'desc' },
+      include: {
+        tool: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            category: true,
+            creator: { select: { id: true, name: true, email: true } },
+          },
+        },
+        agent: {
+          select: {
+            id: true,
+            name: true,
+            user: { select: { id: true, name: true, email: true } },
+          },
+        },
+      },
+    });
+
+    const transactions = calls.map((c) => ({
+      id: c.id,
+      toolId: c.toolId,
+      toolName: c.tool?.name || 'Unknown API',
+      toolSlug: c.tool?.slug || '',
+      category: c.tool?.category || 'General',
+      creatorName: c.tool?.creator?.name || 'Creator',
+      creatorEmail: c.tool?.creator?.email || '',
+      consumerName: c.agent?.user?.name || 'Consumer',
+      consumerEmail: c.agent?.user?.email || '',
+      agentName: c.agent?.name || 'Default Agent',
+      priceMicroUsd: c.priceMicroUsd.toString(),
+      platformFeeMicroUsd: c.platformFeeMicroUsd.toString(),
+      creatorEarningsMicroUsd: c.creatorEarningsMicroUsd.toString(),
+      platformFeeBps: c.platformFeeBps,
+      status: c.status,
+      latencyMs: c.latencyMs,
+      createdAt: c.createdAt,
+    }));
+
+    return sendSuccess(res, transactions);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // PUT /api/admin/commission (PRD 7.10: Platform commission setting)
 adminRouter.put('/commission', async (req: Request, res: Response, next) => {
   try {

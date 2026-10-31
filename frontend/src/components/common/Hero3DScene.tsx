@@ -375,7 +375,7 @@ export const Hero3DScene: React.FC<Hero3DSceneProps> = ({ className = '' }) => {
     // -------------------------------------------------------------
     // F. ANIMATION LOOP & SMOOTH INTERACTIVITY
     // -------------------------------------------------------------
-    const clock = new THREE.Clock();
+    const startTime = performance.now();
     let animationFrameId: number;
     let isVisible = true;
 
@@ -404,8 +404,7 @@ export const Hero3DScene: React.FC<Hero3DSceneProps> = ({ className = '' }) => {
       animationFrameId = requestAnimationFrame(animate);
       if (!isVisible) return;
 
-      const elapsed = clock.getElapsedTime() * speedMultiplier;
-      const delta = clock.getDelta();
+      const elapsed = ((performance.now() - startTime) * 0.001) * speedMultiplier;
 
       // 1. Spring-like Bouncy Core Float & Breathing
       const bounceFreq = 2.1;

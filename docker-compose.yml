@@ -1,12 +1,9 @@
-version: "3.9"
-
-
 services:
   db:
     image: postgres:18-alpine
     container_name: tooltoll-postgres
     environment:
-      POSTGRES_DB: tooltoll
+      POSTGRES_DB: tooltoll_db
       POSTGRES_USER: tooltoll_user
       POSTGRES_PASSWORD: tooltoll_secret_pass
       PGDATA: /var/lib/postgresql/data/pgdata
@@ -15,10 +12,10 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U tooltoll_user -d tooltoll"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+      test: ["CMD-SHELL", "pg_isready -U tooltoll_user -d tooltoll_db"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
     restart: unless-stopped
 
   backend:
@@ -39,8 +36,8 @@ services:
       APP_ENV: production
       FRONTEND_URL: http://localhost:5174
       PAYPAL_MODE: sandbox
-      PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID}
-      PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET}
+      PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:-mock-client-id}
+      PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET:-mock-client-secret}
       LLM_PROVIDER: ${LLM_PROVIDER:-mock}
     ports:
       - "8001:4000"
