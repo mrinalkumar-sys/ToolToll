@@ -19,6 +19,9 @@ import {
   AdminConsumerListing,
   AdminTransaction,
   AdminStats,
+  ApimaticValidationReport,
+  ToolTollDraftConfig,
+  SdkGenerationResult,
 } from '../types';
 
 const API_BASE = '/api';
@@ -2016,6 +2019,32 @@ class ApiService {
       evaluated_at: new Date().toISOString(),
       is_simulated: Boolean(params.isSimulated),
     };
+  }
+  // ==========================================
+  // APIMatic API Onboarding & SDK Generation
+  // ==========================================
+  async validateApiSpec(payload: { specContent?: string; specUrl?: string }): Promise<{
+    report: ApimaticValidationReport;
+    draft: ToolTollDraftConfig | null;
+  }> {
+    return this.request<{
+      report: ApimaticValidationReport;
+      draft: ToolTollDraftConfig | null;
+    }>('/onboarding/validate', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async confirmOnboardedApi(payload: Record<string, any>): Promise<Tool> {
+    return this.request<Tool>('/onboarding/confirm', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async getToolSdk(toolId: string, language: 'typescript' | 'python'): Promise<SdkGenerationResult> {
+    return this.request<SdkGenerationResult>('/onboarding/sdk/' + toolId + '/' + language);
   }
 }
 

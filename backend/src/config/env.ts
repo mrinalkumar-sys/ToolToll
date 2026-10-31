@@ -24,6 +24,8 @@ const envSchema = z.object({
   PLATFORM_FEE_BPS: z.string().transform((val) => parseInt(val, 10)).default('1000'),
   TOOL_EXECUTION_TIMEOUT_MS: z.string().transform((val) => parseInt(val, 10)).default('15000'),
   MAX_REQUEST_SIZE: z.string().transform((val) => parseInt(val, 10)).default('1048576'),
+  APIMATIC_API_KEY: z.string().optional().default(''),
+  APIMATIC_BASE_URL: z.string().url().default('https://api.apimatic.io'),
 });
 
 const parseEnv = () => {

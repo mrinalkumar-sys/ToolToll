@@ -366,3 +366,83 @@ export interface AdminStats {
   totalConsumerBalanceMicroUsd?: string;
   totalReservedMicroUsd?: string;
 }
+
+
+// ==========================================
+// APIMatic API Onboarding & Validation Types
+// ==========================================
+
+export interface ApimaticValidationIssue {
+  code: string;
+  message: string;
+  path?: string;
+  severity: 'error' | 'warning';
+  suggestion?: string;
+}
+
+export interface ApimaticEndpointSummary {
+  path: string;
+  method: string;
+  name: string;
+  description?: string;
+  inputSchema: Record<string, unknown>;
+  outputSchema?: Record<string, unknown>;
+  exampleRequest?: Record<string, unknown>;
+  exampleResponse?: Record<string, unknown>;
+  authRequired: boolean;
+  authType: 'NONE' | 'API_KEY_HEADER' | 'BEARER_TOKEN' | 'BASIC_AUTH';
+  authHeaderName?: string;
+  parametersCount: number;
+  hasInputSchema: boolean;
+  hasOutputSchema: boolean;
+  priceMicroUsd: string;
+  timeoutMs: number;
+  isPrimary: boolean;
+}
+
+export interface ApimaticValidationReport {
+  engine: 'apimatic_cloud' | 'apimatic_local_engine';
+  engineDetails: string;
+  isValid: boolean;
+  status: 'VALID' | 'WARNINGS' | 'INVALID';
+  specTitle: string;
+  specVersion: string;
+  summary: {
+    totalIssues: number;
+    errorsCount: number;
+    warningsCount: number;
+    successfulChecksCount: number;
+    endpointsCount: number;
+  };
+  errors: ApimaticValidationIssue[];
+  warnings: ApimaticValidationIssue[];
+  successfulChecks: Array<{ check: string; description: string }>;
+  endpointDetails: ApimaticEndpointSummary[];
+  schemaIssues: Array<{ schemaName: string; issue: string; severity: 'error' | 'warning' }>;
+  apimaticNotice?: string;
+}
+
+export interface ToolTollDraftConfig {
+  name: string;
+  slug: string;
+  shortDescription: string;
+  detailedDescription: string;
+  category: string;
+  tags: string[];
+  baseUrl: string;
+  endpointPath: string;
+  httpMethod: string;
+  authMethod: 'NONE' | 'API_KEY_HEADER' | 'BEARER_TOKEN' | 'BASIC_AUTH';
+  authHeaderName?: string;
+  priceMicroUsd: string;
+  timeoutMs: number;
+  endpoints: ApimaticEndpointSummary[];
+  rawSpecFormat: 'json' | 'yaml';
+  specVersion: string;
+}
+
+export interface SdkGenerationResult {
+  language: string;
+  filename: string;
+  code: string;
+}

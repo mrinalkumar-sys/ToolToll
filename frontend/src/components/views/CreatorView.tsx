@@ -3,7 +3,11 @@ import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { formatMicroUsd } from '../../utils/formatters';
 import { Tool, ToolEndpoint } from '../../types';
+import { ApimaticOnboardingModal } from './ApimaticOnboardingModal';
 import {
+  Sparkles,
+  Download,
+  Code,
   Hammer,
   Plus,
   DollarSign,
@@ -52,6 +56,69 @@ export const CreatorView: React.FC = () => {
   const [sortBy, setSortBy] = useState<'newest' | 'name' | 'priceAsc' | 'priceDesc'>('newest');
 
   // Modal 1: Register New API (PHASE 2)
+  // APIMatic Onboarding & SDK Modals
+  const [apimaticModalOpen, setApimaticModalOpen] = useState(false);
+  const [sdkModalOpen, setSdkModalOpen] = useState(false);
+  const [selectedToolForSdk, setSelectedToolForSdk] = useState<Tool | null>(null);
+  const [sdkLanguage, setSdkLanguage] = useState<'typescript' | 'python'>('typescript');
+  const [sdkCode, setSdkCode] = useState<string>('');
+  const [sdkFilename, setSdkFilename] = useState<string>('');
+  const [sdkLoading, setSdkLoading] = useState<boolean>(false);
+  const [sdkCopied, setSdkCopied] = useState<boolean>(false);
+
+  const handleOpenSdkModal = async (tool: Tool, lang: 'typescript' | 'python' = 'typescript') => {
+    setSelectedToolForSdk(tool);
+    setSdkLanguage(lang);
+    setSdkModalOpen(true);
+    setSdkLoading(true);
+    setSdkCopied(false);
+    try {
+      const res = await api.getToolSdk(tool.id, lang);
+      setSdkCode(res.code);
+      setSdkFilename(res.filename);
+    } catch (err: any) {
+      setSdkCode('// Failed to generate SDK: ' + (err.message || 'Server error'));
+    } finally {
+      setSdkLoading(false);
+    }
+  };
+
+  const handleChangeSdkLanguage = async (lang: 'typescript' | 'python') => {
+    if (!selectedToolForSdk) return;
+    setSdkLanguage(lang);
+    setSdkLoading(true);
+    setSdkCopied(false);
+    try {
+      const res = await api.getToolSdk(selectedToolForSdk.id, lang);
+      setSdkCode(res.code);
+      setSdkFilename(res.filename);
+    } catch (err: any) {
+      setSdkCode('// Failed to generate SDK: ' + (err.message || 'Server error'));
+    } finally {
+      setSdkLoading(false);
+    }
+  };
+
+  const handleDownloadSdkFile = () => {
+    if (!sdkCode || !sdkFilename) return;
+    const blob = new Blob([sdkCode], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = sdkFilename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCopySdkCode = () => {
+    if (!sdkCode) return;
+    navigator.clipboard.writeText(sdkCode);
+    setSdkCopied(true);
+    setTimeout(() => setSdkCopied(false), 2000);
+  };
+
   const [registerModalOpen, setRegisterModalOpen] = useState(false);
   const [regApiName, setRegApiName] = useState('');
   const [regCategory, setRegCategory] = useState('NLP');
@@ -618,9 +685,26 @@ export const CreatorView: React.FC = () => {
           </div>
 
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            <button className="btn btn-primary btn-lg" onClick={handleOpenRegisterModal}>
+            <button
+              type="button"
+              className="btn btn-primary btn-lg"
+              onClick={() => setApimaticModalOpen(true)}
+              style={{
+                background: 'linear-gradient(135deg, #FF5500 0%, #EA580C 100%)',
+                border: '1px solid rgba(255, 85, 0, 0.6)',
+                boxShadow: '0 4px 14px rgba(255, 85, 0, 0.35)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontWeight: 700,
+              }}
+            >
+              <Sparkles size={16} />
+              Onboard with APIMatic
+            </button>
+            <button className="btn btn-secondary btn-lg" onClick={handleOpenRegisterModal}>
               <Plus size={16} />
-              Register New API
+              Register Manually
             </button>
           </div>
         </div>
@@ -1048,7 +1132,7 @@ export const CreatorView: React.FC = () => {
               onClick={(e) => e.stopPropagation()}
               style={{ maxWidth: '780px', width: '92vw', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}
             >
-              <div className="modal-header">
+              <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <h3 style={{ fontSize: '1.28rem', fontWeight: 800, color: '#FFFFFF' }}>
                     Register New API Service
@@ -1057,6 +1141,29 @@ export const CreatorView: React.FC = () => {
                     Create a new upstream API service and configure its initial endpoint route
                   </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRegisterModalOpen(false);
+                    setApimaticModalOpen(true);
+                  }}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    background: 'rgba(255, 85, 0, 0.12)',
+                    border: '1px solid rgba(255, 85, 0, 0.4)',
+                    color: '#FF5500',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <Sparkles size={14} />
+                  Import via APIMatic
+                </button>
                 <button
                   onClick={() => setRegisterModalOpen(false)}
                   style={{ background: 'none', border: 'none', color: 'var(--text-dark-muted)', cursor: 'pointer' }}
@@ -1761,7 +1868,30 @@ export const CreatorView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="modal-footer" style={{ borderTop: '1px solid var(--border-dark)', padding: '14px 24px' }}>
+              <div className="modal-footer" style={{ borderTop: '1px solid var(--border-dark)', padding: '14px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDetailsModalOpen(false);
+                    handleOpenSdkModal(viewingTool);
+                  }}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: '6px',
+                    background: 'rgba(255, 85, 0, 0.12)',
+                    border: '1px solid rgba(255, 85, 0, 0.4)',
+                    color: '#FF5500',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <Code size={14} />
+                  Download Client SDK (TS / Python)
+                </button>
                 <button type="button" className="btn btn-secondary" onClick={() => setDetailsModalOpen(false)}>
                   Close
                 </button>
@@ -1821,6 +1951,156 @@ export const CreatorView: React.FC = () => {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* APIMATIC ONBOARDING MODAL */}
+        <ApimaticOnboardingModal
+          isOpen={apimaticModalOpen}
+          onClose={() => setApimaticModalOpen(false)}
+          onSuccess={(createdTool) => {
+            setMyTools((prev) => [createdTool, ...prev]);
+            setNotification({
+              type: 'success',
+              message: `API "${createdTool.name}" onboarded via APIMatic successfully in DRAFT status!`,
+            });
+            setTimeout(() => setNotification(null), 5000);
+          }}
+        />
+
+        {/* CLIENT SDK VIEWER MODAL */}
+        {sdkModalOpen && selectedToolForSdk && (
+          <div className="modal-overlay" onClick={() => setSdkModalOpen(false)}>
+            <div
+              className="modal-content"
+              onClick={(e) => e.stopPropagation()}
+              style={{ maxWidth: '820px', width: '92vw', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}
+            >
+              <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#FFFFFF', margin: 0 }}>
+                    Client SDK — {selectedToolForSdk.name}
+                  </h3>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-dark-muted)', margin: '2px 0 0 0' }}>
+                    Auto-generated client wrapper with typed models and ToolToll pay-per-use authorization.
+                  </p>
+                </div>
+                <button onClick={() => setSdkModalOpen(false)} style={{ background: 'none', border: 'none', color: '#9FA4B5', cursor: 'pointer' }}>
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Language Selector Tab */}
+              <div style={{ padding: '0.75rem 1.5rem', background: '#090A0E', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => handleChangeSdkLanguage('typescript')}
+                    style={{
+                      padding: '0.45rem 0.85rem',
+                      borderRadius: '6px',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      background: sdkLanguage === 'typescript' ? 'rgba(255, 85, 0, 0.15)' : 'transparent',
+                      border: sdkLanguage === 'typescript' ? '1px solid #FF5500' : '1px solid rgba(255, 255, 255, 0.1)',
+                      color: sdkLanguage === 'typescript' ? '#FF5500' : '#9FA4B5',
+                    }}
+                  >
+                    TypeScript (.ts)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleChangeSdkLanguage('python')}
+                    style={{
+                      padding: '0.45rem 0.85rem',
+                      borderRadius: '6px',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      background: sdkLanguage === 'python' ? 'rgba(255, 85, 0, 0.15)' : 'transparent',
+                      border: sdkLanguage === 'python' ? '1px solid #FF5500' : '1px solid rgba(255, 255, 255, 0.1)',
+                      color: sdkLanguage === 'python' ? '#FF5500' : '#9FA4B5',
+                    }}
+                  >
+                    Python (.py)
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={handleCopySdkCode}
+                    style={{
+                      padding: '0.45rem 0.85rem',
+                      borderRadius: '6px',
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      background: '#161824',
+                      border: '1px solid rgba(255, 255, 255, 0.12)',
+                      color: sdkCopied ? '#10B981' : '#FFFFFF',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    {sdkCopied ? <Check size={14} /> : <Code size={14} />}
+                    {sdkCopied ? 'Copied!' : 'Copy Code'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDownloadSdkFile}
+                    style={{
+                      padding: '0.45rem 0.85rem',
+                      borderRadius: '6px',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      background: 'var(--brand-orange)',
+                      border: 'none',
+                      color: '#FFFFFF',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <Download size={14} />
+                    Download File
+                  </button>
+                </div>
+              </div>
+
+              {/* Code Content */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '1rem 1.5rem', background: '#090A0E' }}>
+                {sdkLoading ? (
+                  <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#9FA4B5' }}>
+                    <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 0.75rem auto' }} />
+                    Generating SDK...
+                  </div>
+                ) : (
+                  <pre
+                    style={{
+                      margin: 0,
+                      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                      fontSize: '0.8rem',
+                      lineHeight: 1.5,
+                      color: '#E2E8F0',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    {sdkCode}
+                  </pre>
+                )}
+              </div>
+
+              <div style={{ padding: '0.75rem 1.5rem', background: '#12141D', borderTop: '1px solid rgba(255, 255, 255, 0.08)', display: 'flex', justifyContent: 'flex-end' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setSdkModalOpen(false)}>
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -18,6 +18,7 @@ import { creatorRouter } from './modules/creator/creatorController';
 import { adminRouter } from './modules/admin/adminController';
 import { agentWorkflowRouter } from './modules/ai-integration/plannerController';
 import { demoRouter } from './modules/demo/demoTools';
+import { onboardingRouter } from './modules/onboarding/onboardingController';
 
 export const app = express();
 
@@ -104,6 +105,7 @@ app.use('/api/creator', creatorRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/agent', agentWorkflowRouter);
 app.use('/api/demo', executionLimiter, demoRouter);
+app.use('/api/onboarding', onboardingRouter);
 
 // 404 Handler
 app.use((_req: Request, res: Response) => {
