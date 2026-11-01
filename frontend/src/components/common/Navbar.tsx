@@ -565,25 +565,35 @@ export const Navbar: React.FC<NavbarProps> = ({
           })}
 
           {isAuthenticated && (
-            <div style={{ marginTop: '10px', paddingTop: '12px', borderTop: '1px solid var(--border-dark)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
-                <span style={{ fontSize: '0.74rem', color: 'var(--text-dark-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  Role
-                </span>
-                <span className="badge badge-orange">{actualRole.toUpperCase()}</span>
-              </div>
-
-              <div>
-                <RoleSelector
-                  actualRole={actualRole}
-                  isAdmin={Boolean(user?.isAdmin)}
-                  isCreator={actualRole === 'creator'}
-                  isConsumer={actualRole === 'consumer'}
-                  onLogout={handleLogout}
-                  isLoggingOut={isLoggingOut}
-                  onSelectTab={onSelectTab}
-                />
-              </div>
+            <div style={{ marginTop: '10px', paddingTop: '12px', borderTop: '1px solid var(--border-dark)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {handleLogout && (
+                <button
+                  type="button"
+                  disabled={isLoggingOut}
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    handleLogout();
+                  }}
+                  className="btn btn-secondary w-full"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    padding: '8px 12px',
+                    borderRadius: 'var(--radius-xs)',
+                    background: 'rgba(239, 68, 68, 0.08)',
+                    color: '#F87171',
+                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                    cursor: isLoggingOut ? 'wait' : 'pointer',
+                  }}
+                >
+                  <LogOut size={14} color="#EF4444" strokeWidth={2.2} />
+                  <span>{isLoggingOut ? 'Signing out...' : 'Sign Out'}</span>
+                </button>
+              )}
             </div>
           )}
 

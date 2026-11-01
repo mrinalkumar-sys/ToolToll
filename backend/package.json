@@ -20,6 +20,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.6.1",
     "@prisma/client": "^6.4.1",
+    "@types/newman": "^5.3.6",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -29,6 +30,7 @@
     "express-rate-limit": "^7.5.0",
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
+    "newman": "^6.2.3",
     "pino": "^9.6.0",
     "swagger-ui-express": "^5.0.1",
     "undici": "^7.4.0",

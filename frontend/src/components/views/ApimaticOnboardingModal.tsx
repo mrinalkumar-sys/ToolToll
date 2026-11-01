@@ -28,6 +28,7 @@ interface ApimaticOnboardingModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (tool: Tool) => void;
+  onStartTesting?: (tool: Tool) => void;
 }
 
 type OnboardingStep = 1 | 2 | 3 | 4 | 5;
@@ -169,6 +170,7 @@ export const ApimaticOnboardingModal: React.FC<ApimaticOnboardingModalProps> = (
   isOpen,
   onClose,
   onSuccess,
+  onStartTesting,
 }) => {
   const fileInputId = useId();
   // Step state (1: Upload, 2: Validating, 3: Report, 4: Preview/Edit, 5: Confirm)
@@ -1277,18 +1279,40 @@ export const ApimaticOnboardingModal: React.FC<ApimaticOnboardingModalProps> = (
                   <p style={{ fontSize: '0.88rem', color: '#9FA4B5', maxWidth: '480px', margin: '0 auto 1.5rem auto' }}>
                     "{submitSuccess.name}" has been created in your Creator Studio under <strong>DRAFT</strong> status. You can now run verification test calls before submitting it for marketplace approval.
                   </p>
-                  <button
-                    onClick={onClose}
-                    className="btn btn-primary"
-                    style={{
-                      padding: '0.75rem 1.75rem',
-                      borderRadius: '8px',
-                      fontWeight: 700,
-                      fontSize: '0.9rem',
-                    }}
-                  >
-                    Return to Creator Studio
-                  </button>
+                  <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                    {onStartTesting && (
+                      <button
+                        onClick={() => onStartTesting(submitSuccess)}
+                        className="btn btn-primary"
+                        style={{
+                          padding: '0.75rem 1.75rem',
+                          borderRadius: '8px',
+                          fontWeight: 700,
+                          fontSize: '0.9rem',
+                          background: 'linear-gradient(135deg, #FF6C37 0%, #EA580C 100%)',
+                          border: '1px solid rgba(255, 108, 55, 0.6)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                        }}
+                      >
+                        <Layers size={16} />
+                        Proceed to Postman Testing &rarr;
+                      </button>
+                    )}
+                    <button
+                      onClick={onClose}
+                      className="btn btn-secondary"
+                      style={{
+                        padding: '0.75rem 1.75rem',
+                        borderRadius: '8px',
+                        fontWeight: 700,
+                        fontSize: '0.9rem',
+                      }}
+                    >
+                      Return to Creator Studio
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div>

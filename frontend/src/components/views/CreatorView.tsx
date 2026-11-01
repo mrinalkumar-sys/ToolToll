@@ -2,8 +2,17 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { formatMicroUsd } from '../../utils/formatters';
-import { Tool, ToolEndpoint } from '../../types';
+import { Tool, ToolEndpoint, ToolTestHistoryItem } from '../../types';
 import { ApimaticOnboardingModal } from './ApimaticOnboardingModal';
+import { PostmanTestingModal } from './PostmanTestingModal';
+import {
+  DataGrid,
+  ColDef,
+  StatusCellRenderer,
+  MethodCellRenderer,
+  MicroUsdCellRenderer,
+  DateCellRenderer,
+} from '../common/DataGrid';
 import {
   Sparkles,
   Download,
@@ -33,6 +42,24 @@ import {
   FileCode,
   ExternalLink,
 } from 'lucide-react';
+
+export interface CreatorEndpointRow {
+  id: string;
+  toolId: string;
+  toolName: string;
+  toolSlug: string;
+  category: string;
+  version: number;
+  toolStatus: string;
+  endpointId: string;
+  endpointName: string;
+  endpointPath: string;
+  httpMethod: string;
+  priceMicroUsd: string;
+  isPrimary: boolean;
+  tool: Tool;
+  endpoint: ToolEndpoint;
+}
 
 export const CreatorView: React.FC = () => {
   const { user, loginDemo } = useAuth();
@@ -65,6 +92,57 @@ export const CreatorView: React.FC = () => {
   const [sdkFilename, setSdkFilename] = useState<string>('');
   const [sdkLoading, setSdkLoading] = useState<boolean>(false);
   const [sdkCopied, setSdkCopied] = useState<boolean>(false);
+
+  // Postman Testing Modal (Phase 2)
+  const [postmanModalOpen, setPostmanModalOpen] = useState(false);
+  const [selectedToolForPostman, setSelectedToolForPostman] = useState<string | undefined>(undefined);
+  const [selectedEndpointForPostman, setSelectedEndpointForPostman] = useState<string | undefined>(undefined);
+
+  // AG Grid & Postman Test History State
+  const [creatorSubTab, setCreatorSubTab] = useState<'endpoints' | 'testHistory'>('endpoints');
+  const [testHistory, setTestHistory] = useState<ToolTestHistoryItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [selectedHistoryTool, setSelectedHistoryTool] = useState<string>('ALL');
+
+  const fetchTestHistory = async (targetToolId = selectedHistoryTool) => {
+    setHistoryLoading(true);
+    try {
+      if (targetToolId && targetToolId !== 'ALL') {
+        const res = await api.getToolTestHistory(targetToolId);
+        setTestHistory(res?.history || []);
+      } else {
+        const allHistories: ToolTestHistoryItem[] = [];
+        await Promise.all(
+          myTools.map(async (t) => {
+            try {
+              const res = await api.getToolTestHistory(t.id);
+              if (res?.history) {
+                allHistories.push(...res.history);
+              }
+            } catch {}
+          })
+        );
+        allHistories.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setTestHistory(allHistories);
+      }
+    } catch (err) {
+      console.error('Failed to fetch test history:', err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (creatorSubTab === 'testHistory' && myTools.length > 0) {
+      fetchTestHistory(selectedHistoryTool);
+    }
+  }, [creatorSubTab, selectedHistoryTool, myTools]);
+
+  const handleOpenPostmanModal = (toolId?: string, endpointId?: string) => {
+    setSelectedToolForPostman(toolId);
+    setSelectedEndpointForPostman(endpointId);
+    setPostmanModalOpen(true);
+  };
 
   const handleOpenSdkModal = async (tool: Tool, lang: 'typescript' | 'python' = 'typescript') => {
     setSelectedToolForSdk(tool);
@@ -614,6 +692,453 @@ export const CreatorView: React.FC = () => {
     return myTools.reduce((acc, t) => acc + (t.endpoints?.length || 1), 0);
   }, [myTools]);
 
+  // AG Grid Flattened Rows for Creator Endpoints
+  const gridRows: CreatorEndpointRow[] = useMemo(() => {
+    const rows: CreatorEndpointRow[] = [];
+    filteredTools.forEach((tool) => {
+      const endpoints =
+        tool.endpoints && tool.endpoints.length > 0
+          ? tool.endpoints
+          : [
+              {
+                id: `def_${tool.id}`,
+                toolId: tool.id,
+                name: `${tool.name} (Primary)`,
+                endpointPath: tool.endpointPath,
+                httpMethod: tool.httpMethod,
+                priceMicroUsd: tool.priceMicroUsd,
+                status: tool.status,
+                isPrimary: true,
+                inputSchema: tool.inputSchema,
+                createdAt: tool.createdAt,
+                updatedAt: tool.updatedAt,
+                authMethod: 'NONE',
+              } as ToolEndpoint,
+            ];
+
+      endpoints.forEach((ep, epIdx) => {
+        rows.push({
+          id: `${tool.id}_${ep.id || epIdx}`,
+          toolId: tool.id,
+          toolName: tool.name,
+          toolSlug: tool.slug,
+          category: tool.category,
+          version: tool.version,
+          toolStatus: ep.status || tool.status,
+          endpointId: ep.id,
+          endpointName: ep.name || tool.name,
+          endpointPath: ep.endpointPath || tool.endpointPath,
+          httpMethod: ep.httpMethod || tool.httpMethod || 'GET',
+          priceMicroUsd: ep.priceMicroUsd || tool.priceMicroUsd || '0',
+          isPrimary: epIdx === 0,
+          tool,
+          endpoint: ep,
+        });
+      });
+    });
+    return rows;
+  }, [filteredTools]);
+
+  const endpointsColumnDefs: ColDef<CreatorEndpointRow>[] = [
+    {
+      headerName: 'API Service',
+      field: 'toolName',
+      flex: 2,
+      minWidth: 280,
+      autoHeight: true,
+      wrapText: true,
+      cellRenderer: (params: any) => {
+        const row: CreatorEndpointRow = params.data;
+        if (!row) return '—';
+        return (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px',
+              justifyContent: 'center',
+              padding: '10px 0',
+              width: '100%',
+              minWidth: 0,
+            }}
+          >
+            <div
+              style={{
+                fontWeight: 700,
+                color: '#FFFFFF',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '8px',
+                fontSize: '0.84rem',
+                lineHeight: 1.35,
+                flexWrap: 'wrap',
+              }}
+            >
+              <span
+                style={{
+                  wordBreak: 'break-word',
+                  overflowWrap: 'anywhere',
+                  whiteSpace: 'normal',
+                }}
+              >
+                {row.toolName}
+              </span>
+              {row.isPrimary && (
+                <span
+                  style={{
+                    fontSize: '0.62rem',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    background: 'rgba(255, 85, 0, 0.15)',
+                    color: '#FF5500',
+                    fontWeight: 800,
+                    letterSpacing: '0.04em',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                    marginTop: '2px',
+                  }}
+                >
+                  PRIMARY
+                </span>
+              )}
+            </div>
+            <div
+              style={{
+                fontSize: '0.72rem',
+                color: '#FF6C37',
+                fontFamily: 'var(--font-mono, monospace)',
+                wordBreak: 'break-word',
+                overflowWrap: 'anywhere',
+                whiteSpace: 'normal',
+                lineHeight: 1.3,
+              }}
+            >
+              {row.toolSlug}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      headerName: 'Category',
+      field: 'category',
+      width: 150,
+      minWidth: 140,
+      cellRenderer: (params: any) => (
+        <span className="badge badge-dark-neutral" style={{ fontSize: '0.72rem', padding: '3px 8px', whiteSpace: 'nowrap' }}>
+          {params.value}
+        </span>
+      ),
+    },
+    {
+      headerName: 'Method',
+      field: 'httpMethod',
+      width: 105,
+      minWidth: 95,
+      cellRenderer: (params: any) => {
+        const row = params.data as CreatorEndpointRow;
+        if (!row) return null;
+        return (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenPostmanModal(row.toolId, row.endpointId);
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              cursor: 'pointer',
+              display: 'inline-flex',
+            }}
+            title={`Test ${row.httpMethod} ${row.endpointPath} with Postman`}
+          >
+            {MethodCellRenderer(params)}
+          </button>
+        );
+      },
+    },
+    {
+      headerName: 'Endpoint Path',
+      field: 'endpointPath',
+      flex: 1.8,
+      minWidth: 240,
+      autoHeight: true,
+      wrapText: true,
+      cellRenderer: (params: any) => {
+        const row = params.data as CreatorEndpointRow;
+        if (!row) return null;
+        return (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenPostmanModal(row.toolId, row.endpointId);
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: '6px 0',
+              cursor: 'pointer',
+              fontFamily: 'var(--font-mono, monospace)',
+              fontSize: '0.80rem',
+              color: '#FFFFFF',
+              textAlign: 'left',
+              display: 'inline-flex',
+              alignItems: 'center',
+              width: '100%',
+              maxWidth: '100%',
+              lineHeight: 1.35,
+            }}
+            title={`Test endpoint with Postman: ${row.endpointPath}`}
+          >
+            <span
+              style={{
+                textDecoration: 'underline',
+                textDecorationColor: 'rgba(255, 85, 0, 0.4)',
+                wordBreak: 'break-all',
+                overflowWrap: 'anywhere',
+                whiteSpace: 'normal',
+              }}
+            >
+              {params.value}
+            </span>
+          </button>
+        );
+      },
+    },
+    {
+      headerName: 'Unit Rate',
+      field: 'priceMicroUsd',
+      width: 140,
+      minWidth: 130,
+      cellRenderer: MicroUsdCellRenderer,
+    },
+    {
+      headerName: 'Version',
+      field: 'version',
+      width: 95,
+      minWidth: 90,
+      cellRenderer: (params: any) => (
+        <span style={{ fontSize: '0.78rem', color: 'var(--text-dark-muted)', fontFamily: 'var(--font-mono, monospace)' }}>
+          v{params.value}
+        </span>
+      ),
+    },
+    {
+      headerName: 'Status',
+      field: 'toolStatus',
+      width: 140,
+      minWidth: 130,
+      cellRenderer: StatusCellRenderer,
+    },
+    {
+      headerName: 'Actions',
+      field: 'id',
+      width: 290,
+      minWidth: 290,
+      sortable: false,
+      filter: false,
+      cellRenderer: (params: any) => {
+        const row: CreatorEndpointRow = params.data;
+        if (!row) return null;
+        return (
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', height: '100%' }}>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpenPostmanModal(row.toolId, row.endpointId);
+              }}
+              title="Execute Postman contract and SLA test suite"
+              style={{ padding: '5px 9px', fontSize: '0.74rem', color: '#FF6C37', height: '28px', whiteSpace: 'nowrap' }}
+            >
+              <Layers size={12} style={{ marginRight: '4px' }} />
+              Postman
+            </button>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => handleOpenSdkModal(row.tool, 'typescript')}
+              title="Download client SDK"
+              style={{ padding: '5px 9px', fontSize: '0.74rem', color: '#38BDF8', height: '28px', whiteSpace: 'nowrap' }}
+            >
+              <Code size={12} style={{ marginRight: '4px' }} />
+              SDK
+            </button>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpenPostmanModal(row.toolId, row.endpointId);
+              }}
+              title="Execute test call with Postman"
+              style={{ padding: '5px 8px', fontSize: '0.74rem', height: '28px', color: '#10B981', flexShrink: 0 }}
+            >
+              <Play size={12} />
+            </button>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => handleViewDetails(row.tool)}
+              title="View details"
+              style={{ padding: '5px 8px', fontSize: '0.74rem', height: '28px', flexShrink: 0 }}
+            >
+              <Eye size={12} />
+            </button>
+          </div>
+        );
+      },
+    },
+  ];
+
+  const testHistoryColumnDefs: ColDef<ToolTestHistoryItem>[] = [
+    {
+      headerName: 'Execution Timestamp',
+      field: 'createdAt',
+      cellRenderer: DateCellRenderer,
+      sort: 'desc',
+      width: 180,
+      minWidth: 170,
+    },
+    {
+      headerName: 'Outcome',
+      field: 'isSuccess',
+      width: 130,
+      minWidth: 120,
+      cellRenderer: (params: any) => {
+        const isPassed = params.value === true;
+        return (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '3px 10px',
+              borderRadius: '5px',
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              background: isPassed ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+              color: isPassed ? '#10B981' : '#EF4444',
+              border: `1px solid ${isPassed ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {isPassed ? 'PASSED' : 'FAILED'}
+          </span>
+        );
+      },
+    },
+    {
+      headerName: 'Method',
+      field: 'httpMethod',
+      width: 105,
+      minWidth: 95,
+      cellRenderer: MethodCellRenderer,
+    },
+    {
+      headerName: 'Endpoint Route',
+      field: 'endpointPath',
+      flex: 1.8,
+      minWidth: 240,
+      autoHeight: true,
+      wrapText: true,
+      cellRenderer: (params: any) => (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', justifyContent: 'center', padding: '6px 0', width: '100%' }}>
+          <div style={{ fontWeight: 700, color: '#FFFFFF', fontSize: '0.84rem', wordBreak: 'break-word', overflowWrap: 'anywhere', whiteSpace: 'normal' }}>
+            {params.data?.endpointName || 'Default Target'}
+          </div>
+          <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.74rem', color: '#9FA4B5', wordBreak: 'break-all', overflowWrap: 'anywhere', whiteSpace: 'normal' }}>
+            {params.value}
+          </div>
+        </div>
+      ),
+    },
+    {
+      headerName: 'HTTP Status',
+      field: 'statusCode',
+      width: 120,
+      minWidth: 110,
+      cellRenderer: (params: any) => {
+        const code = params.value;
+        if (!code) return <span style={{ color: '#9FA4B5' }}>—</span>;
+        const is2xx = code >= 200 && code < 300;
+        return (
+          <span
+            style={{
+              fontFamily: 'var(--font-mono, monospace)',
+              fontWeight: 700,
+              fontSize: '0.80rem',
+              color: is2xx ? '#34D399' : '#EF4444',
+            }}
+          >
+            {code}
+          </span>
+        );
+      },
+    },
+    {
+      headerName: 'Latency',
+      field: 'latencyMs',
+      width: 120,
+      minWidth: 110,
+      cellRenderer: (params: any) => (
+        <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.82rem', color: '#FFFFFF' }}>
+          {params.value != null ? `${params.value}ms` : '—'}
+        </span>
+      ),
+    },
+    {
+      headerName: 'Assertions (Newman)',
+      field: 'passedTests',
+      width: 170,
+      minWidth: 160,
+      cellRenderer: (params: any) => {
+        const passed = params.data?.passedTests ?? 0;
+        const total = params.data?.totalTests ?? 0;
+        return (
+          <span
+            style={{
+              fontFamily: 'var(--font-mono, monospace)',
+              fontSize: '0.80rem',
+              fontWeight: 700,
+              color: passed === total && total > 0 ? '#34D399' : '#F59E0B',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {passed} / {total} Passed
+          </span>
+        );
+      },
+    },
+    {
+      headerName: 'Diagnostics / Error',
+      field: 'errorMessage',
+      flex: 1.8,
+      minWidth: 240,
+      autoHeight: true,
+      wrapText: true,
+      cellRenderer: (params: any) => (
+        <span
+          style={{
+            fontSize: '0.76rem',
+            color: params.value ? '#F87171' : 'var(--text-dark-muted)',
+            fontFamily: params.value ? 'var(--font-mono, monospace)' : 'inherit',
+            wordBreak: 'break-word',
+            overflowWrap: 'anywhere',
+            whiteSpace: 'normal',
+            lineHeight: 1.35,
+            padding: '6px 0',
+            display: 'block',
+          }}
+          title={params.value || ''}
+        >
+          {params.value || 'None (All assertions passed)'}
+        </span>
+      ),
+    },
+  ];
+
   return (
     <div className="section-dark" style={{ minHeight: '85vh', paddingTop: '40px', paddingBottom: '80px' }}>
       <div className="container-editorial">
@@ -706,6 +1231,23 @@ export const CreatorView: React.FC = () => {
               <Plus size={16} />
               Register Manually
             </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-lg"
+              onClick={() => handleOpenPostmanModal()}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontWeight: 600,
+                borderColor: 'rgba(255, 108, 55, 0.4)',
+                color: '#FF6C37',
+              }}
+              title="Execute Newman/Postman contract and SLA tests"
+            >
+              <Layers size={16} />
+              Test with Postman
+            </button>
           </div>
         </div>
 
@@ -771,24 +1313,47 @@ export const CreatorView: React.FC = () => {
         </div>
 
         {/* ========================================================= */}
-        {/* 3. REGISTERED API ENDPOINTS SECTION (PHASE 4.C)            */}
+        {/* 3. REGISTERED API ENDPOINTS SECTION (AG GRID)              */}
         {/* ========================================================= */}
         <div className="card-dark" style={{ padding: '28px' }}>
           {/* Section Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
             <div>
-              <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>Registered API Endpoints</span>
-                <span className="badge badge-orange" style={{ fontSize: '0.75rem', padding: '2px 8px' }}>
-                  {totalEndpointsCount}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <span className="badge badge-orange" style={{ fontSize: '0.70rem', letterSpacing: '0.5px' }}>
+                  SPONSOR 3: AG GRID
                 </span>
+                <span className="badge badge-dark-neutral" style={{ fontSize: '0.70rem' }}>
+                  Tabular Analytics
+                </span>
+              </div>
+              <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>API Portfolio & Technical Suite</span>
               </h3>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-dark-secondary)' }}>
-                Manage live services, add dedicated endpoints, and monitor approval lifecycle
+                Inspect registered endpoints, trigger Postman Newman automated runs, generate APIMatic SDKs, and analyze results.
               </p>
             </div>
 
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => handleOpenPostmanModal()}
+                title="Open Postman technical testing suite"
+                style={{ color: '#FF6C37', borderColor: 'rgba(255, 108, 55, 0.4)' }}
+              >
+                <Layers size={14} />
+                Open Postman Suite
+              </button>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => setApimaticModalOpen(true)}
+                title="Onboard API via APIMatic OpenAPI validator"
+                style={{ color: '#38BDF8', borderColor: 'rgba(56, 189, 248, 0.4)' }}
+              >
+                <Sparkles size={14} />
+                APIMatic Onboard
+              </button>
               <button
                 className="btn btn-primary btn-sm"
                 onClick={() => handleOpenAddEndpointModal()}
@@ -800,325 +1365,274 @@ export const CreatorView: React.FC = () => {
             </div>
           </div>
 
-          {/* Filtering, Search & Sorting Bar (Phase 4.C) */}
+          {/* Sub-tab Switcher: Endpoints vs Newman History */}
           <div
             style={{
               display: 'flex',
-              gap: '12px',
-              flexWrap: 'wrap',
-              marginBottom: '20px',
-              padding: '12px 16px',
-              background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid var(--border-dark)',
-              borderRadius: 'var(--radius-sm)',
               alignItems: 'center',
+              gap: '12px',
+              marginBottom: '20px',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+              paddingBottom: '12px',
             }}
           >
-            {/* Search */}
-            <div style={{ position: 'relative', flex: '1 1 240px', minWidth: '200px' }}>
-              <Search size={15} color="#9CA3AF" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-              <input
-                type="text"
-                className="form-input"
-                style={{
-                  paddingLeft: '36px',
-                  height: '38px',
-                  fontSize: '0.84rem',
-                  backgroundColor: '#111827',
-                  border: '1px solid rgba(255, 255, 255, 0.16)',
-                  borderRadius: 'var(--radius-sm)',
-                  color: '#F3F4F6',
-                }}
-                placeholder="Search by API name, path, or category..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-
-            {/* Category Filter */}
-            <select
-              className="form-select filter-select"
+            <button
+              onClick={() => setCreatorSubTab('endpoints')}
               style={{
-                width: 'auto',
-                minWidth: '160px',
-                height: '38px',
-                fontSize: '0.84rem',
-                flex: '0 0 auto',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '9px 16px',
+                borderRadius: '8px',
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                border: creatorSubTab === 'endpoints' ? '1px solid var(--accent-orange, #FF5500)' : '1px solid transparent',
+                background: creatorSubTab === 'endpoints' ? 'rgba(255, 85, 0, 0.12)' : 'transparent',
+                color: creatorSubTab === 'endpoints' ? '#FFFFFF' : 'var(--text-dark-secondary)',
+                transition: 'all 0.15s ease',
               }}
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
             >
-              <option value="ALL">All Categories</option>
-              <option value="NLP">NLP</option>
-              <option value="Translation">Translation</option>
-              <option value="Security">Security</option>
-              <option value="Data">Data</option>
-              <option value="Utility">Utility</option>
-              <option value="Finance">Finance</option>
-            </select>
+              <Code size={15} color={creatorSubTab === 'endpoints' ? '#FF5500' : 'currentColor'} />
+              Registered Endpoints ({gridRows.length})
+            </button>
 
-            {/* Status Filter */}
-            <select
-              className="form-select filter-select"
+            <button
+              onClick={() => setCreatorSubTab('testHistory')}
               style={{
-                width: 'auto',
-                minWidth: '160px',
-                height: '38px',
-                fontSize: '0.84rem',
-                flex: '0 0 auto',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '9px 16px',
+                borderRadius: '8px',
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                border: creatorSubTab === 'testHistory' ? '1px solid var(--accent-orange, #FF5500)' : '1px solid transparent',
+                background: creatorSubTab === 'testHistory' ? 'rgba(255, 85, 0, 0.12)' : 'transparent',
+                color: creatorSubTab === 'testHistory' ? '#FFFFFF' : 'var(--text-dark-secondary)',
+                transition: 'all 0.15s ease',
               }}
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
             >
-              <option value="ALL">All Statuses</option>
-              <option value="APPROVED">Approved / Live</option>
-              <option value="PENDING_REVIEW">Pending Review</option>
-              <option value="DRAFT">Draft</option>
-              <option value="PAUSED">Paused</option>
-            </select>
+              <Layers size={15} color={creatorSubTab === 'testHistory' ? '#FF5500' : 'currentColor'} />
+              Postman Test History ({testHistory.length})
+            </button>
 
-            {/* Sort */}
-            <select
-              className="form-select filter-select"
-              style={{
-                width: 'auto',
-                minWidth: '170px',
-                height: '38px',
-                fontSize: '0.84rem',
-                flex: '0 0 auto',
-              }}
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-            >
-              <option value="newest">Sort: Newest</option>
-              <option value="name">Sort: Name (A-Z)</option>
-              <option value="priceAsc">Sort: Price (Low to High)</option>
-              <option value="priceDesc">Sort: Price (High to Low)</option>
-            </select>
-
-            {(searchQuery || categoryFilter !== 'ALL' || statusFilter !== 'ALL') && (
-              <button
-                className="btn btn-secondary btn-sm"
-                onClick={() => {
-                  setSearchQuery('');
-                  setCategoryFilter('ALL');
-                  setStatusFilter('ALL');
-                }}
-                style={{ height: '38px', fontSize: '0.80rem', padding: '0 14px', display: 'inline-flex', alignItems: 'center' }}
-              >
-                Clear Filters
-              </button>
+            {creatorSubTab === 'testHistory' && (
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <select
+                  className="form-select"
+                  style={{
+                    height: '34px',
+                    fontSize: '0.80rem',
+                    backgroundColor: '#111827',
+                    border: '1px solid rgba(255, 255, 255, 0.16)',
+                    color: '#F3F4F6',
+                    padding: '0 10px',
+                    borderRadius: '6px',
+                  }}
+                  value={selectedHistoryTool}
+                  onChange={(e) => {
+                    const tid = e.target.value;
+                    setSelectedHistoryTool(tid);
+                    fetchTestHistory(tid);
+                  }}
+                >
+                  <option value="ALL">All Registered APIs</option>
+                  {myTools.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => fetchTestHistory(selectedHistoryTool)}
+                  title="Refresh test logs"
+                  style={{ height: '34px', padding: '0 12px', fontSize: '0.78rem' }}
+                >
+                  <RefreshCw size={12} className={historyLoading ? 'animate-spin' : ''} />
+                  Refresh
+                </button>
+              </div>
             )}
           </div>
 
-          {/* Endpoints Table View */}
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-dark-muted)' }}>
-              <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 10px' }} />
-              <div>Loading registered API services...</div>
-            </div>
-          ) : filteredTools.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '48px 20px', border: '1px dashed var(--border-dark)', borderRadius: 'var(--radius-sm)' }}>
-              <Hammer size={36} color="var(--brand-orange)" style={{ margin: '0 auto 12px' }} />
-              <h4 style={{ color: '#FFFFFF', fontWeight: 700, marginBottom: '6px' }}>No APIs matching your criteria</h4>
-              <p style={{ color: 'var(--text-dark-secondary)', fontSize: '0.88rem', maxWidth: '440px', margin: '0 auto 16px' }}>
-                {searchQuery || categoryFilter !== 'ALL'
-                  ? 'Try adjusting your search query or filters.'
-                  : 'Get started by creating your first upstream API service.'}
-              </p>
-              <button className="btn btn-primary btn-sm" onClick={handleOpenRegisterModal}>
-                <Plus size={14} /> Register New API
-              </button>
-            </div>
-          ) : (
-            <div className="data-table-container">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>API Service Name</th>
-                    <th>Category</th>
-                    <th>Endpoint Path & Method</th>
-                    <th>Unit Rate</th>
-                    <th>Version</th>
-                    <th>Status</th>
-                    <th style={{ textAlign: 'right' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTools.map((tool) => {
-                    const endpoints = tool.endpoints && tool.endpoints.length > 0
-                      ? tool.endpoints
-                      : [
-                          {
-                            id: `def_${tool.id}`,
-                            toolId: tool.id,
-                            name: `${tool.name} (Primary)`,
-                            endpointPath: tool.endpointPath,
-                            httpMethod: tool.httpMethod,
-                            priceMicroUsd: tool.priceMicroUsd,
-                            status: tool.status,
-                            isPrimary: true,
-                            inputSchema: tool.inputSchema,
-                            createdAt: tool.createdAt,
-                            updatedAt: tool.updatedAt,
-                            authMethod: 'NONE',
-                          } as ToolEndpoint,
-                        ];
+          {/* Sub-tab 1: Endpoints AG Grid */}
+          {creatorSubTab === 'endpoints' && (
+            <>
+              {/* Filtering, Search & Sorting Bar */}
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '12px',
+                  flexWrap: 'wrap',
+                  marginBottom: '20px',
+                  padding: '12px 16px',
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid var(--border-dark)',
+                  borderRadius: 'var(--radius-sm)',
+                  alignItems: 'center',
+                }}
+              >
+                {/* Search */}
+                <div style={{ position: 'relative', flex: '1 1 240px', minWidth: '200px' }}>
+                  <Search size={15} color="#9CA3AF" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+                  <input
+                    type="text"
+                    className="form-input"
+                    style={{
+                      paddingLeft: '36px',
+                      height: '38px',
+                      fontSize: '0.84rem',
+                      backgroundColor: '#111827',
+                      border: '1px solid rgba(255, 255, 255, 0.16)',
+                      borderRadius: 'var(--radius-sm)',
+                      color: '#F3F4F6',
+                    }}
+                    placeholder="Search by API name, path, or category..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
 
-                    return (
-                      <React.Fragment key={tool.id}>
-                        {endpoints.map((ep, epIdx) => {
-                          const methodColor =
-                            ep.httpMethod === 'GET'
-                              ? '#10B981'
-                              : ep.httpMethod === 'POST'
-                              ? '#38BDF8'
-                              : ep.httpMethod === 'PUT'
-                              ? '#F59E0B'
-                              : ep.httpMethod === 'DELETE'
-                              ? '#EF4444'
-                              : '#8B5CF6';
+                {/* Category Filter */}
+                <select
+                  className="form-select filter-select"
+                  style={{
+                    width: 'auto',
+                    minWidth: '160px',
+                    height: '38px',
+                    fontSize: '0.84rem',
+                    flex: '0 0 auto',
+                  }}
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                >
+                  <option value="ALL">All Categories</option>
+                  <option value="NLP">NLP</option>
+                  <option value="Translation">Translation</option>
+                  <option value="Security">Security</option>
+                  <option value="Data">Data</option>
+                  <option value="Utility">Utility</option>
+                  <option value="Finance">Finance</option>
+                </select>
 
-                          return (
-                            <tr
-                              key={ep.id}
-                              style={{
-                                background: epIdx === 0 ? 'rgba(255, 255, 255, 0.015)' : 'transparent',
-                                borderTop: epIdx === 0 ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(255, 255, 255, 0.03)',
-                              }}
-                            >
-                              <td>
-                                {epIdx === 0 ? (
-                                  <div>
-                                    <div style={{ fontWeight: 700, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                      <span>{tool.name}</span>
-                                      <span
-                                        className="badge badge-dark-neutral"
-                                        style={{ fontSize: '0.64rem', padding: '1px 6px', fontWeight: 600 }}
-                                      >
-                                        {endpoints.length} {endpoints.length === 1 ? 'endpoint' : 'endpoints'}
-                                      </span>
-                                    </div>
-                                    <div style={{ fontSize: '0.74rem', color: 'var(--brand-orange)', fontFamily: 'var(--font-mono)', marginTop: '2px' }}>
-                                      {tool.slug}
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div style={{ paddingLeft: '16px', fontSize: '0.80rem', color: 'var(--text-dark-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <span style={{ color: 'var(--brand-orange)' }}>↳</span>
-                                    <span>{ep.name}</span>
-                                  </div>
-                                )}
-                              </td>
+                {/* Status Filter */}
+                <select
+                  className="form-select filter-select"
+                  style={{
+                    width: 'auto',
+                    minWidth: '160px',
+                    height: '38px',
+                    fontSize: '0.84rem',
+                    flex: '0 0 auto',
+                  }}
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="ALL">All Statuses</option>
+                  <option value="APPROVED">Approved / Live</option>
+                  <option value="PENDING_REVIEW">Pending Review</option>
+                  <option value="DRAFT">Draft</option>
+                  <option value="PAUSED">Paused</option>
+                </select>
 
-                              <td>
-                                {epIdx === 0 && (
-                                  <span className="badge badge-dark-neutral">{tool.category}</span>
-                                )}
-                              </td>
+                {/* Sort */}
+                <select
+                  className="form-select filter-select"
+                  style={{
+                    width: 'auto',
+                    minWidth: '170px',
+                    height: '38px',
+                    fontSize: '0.84rem',
+                    flex: '0 0 auto',
+                  }}
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                >
+                  <option value="newest">Sort: Newest</option>
+                  <option value="name">Sort: Name (A-Z)</option>
+                  <option value="priceAsc">Sort: Price (Low to High)</option>
+                  <option value="priceDesc">Sort: Price (High to Low)</option>
+                </select>
 
-                              <td>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <span
-                                    style={{
-                                      fontSize: '0.68rem',
-                                      fontWeight: 800,
-                                      padding: '2px 6px',
-                                      borderRadius: '4px',
-                                      background: `${methodColor}22`,
-                                      color: methodColor,
-                                      border: `1px solid ${methodColor}44`,
-                                      fontFamily: 'var(--font-mono)',
-                                    }}
-                                  >
-                                    {ep.httpMethod}
-                                  </span>
-                                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem', color: '#FFFFFF' }}>
-                                    {ep.endpointPath}
-                                  </span>
-                                </div>
-                              </td>
+                {(searchQuery || categoryFilter !== 'ALL' || statusFilter !== 'ALL') && (
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setCategoryFilter('ALL');
+                      setStatusFilter('ALL');
+                    }}
+                    style={{ height: '38px', fontSize: '0.80rem', padding: '0 14px', display: 'inline-flex', alignItems: 'center' }}
+                  >
+                    Clear Filters
+                  </button>
+                )}
+              </div>
 
-                              <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#FFFFFF', fontSize: '0.85rem' }}>
-                                {formatMicroUsd(ep.priceMicroUsd || tool.priceMicroUsd)}
-                              </td>
+              {loading ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-dark-muted)' }}>
+                  <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 10px' }} />
+                  <div>Loading registered API services...</div>
+                </div>
+              ) : gridRows.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '48px 20px', border: '1px dashed var(--border-dark)', borderRadius: 'var(--radius-sm)' }}>
+                  <Hammer size={36} color="var(--brand-orange)" style={{ margin: '0 auto 12px' }} />
+                  <h4 style={{ color: '#FFFFFF', fontWeight: 700, marginBottom: '6px' }}>No APIs matching your criteria</h4>
+                  <p style={{ color: 'var(--text-dark-secondary)', fontSize: '0.88rem', maxWidth: '440px', margin: '0 auto 16px' }}>
+                    {searchQuery || categoryFilter !== 'ALL'
+                      ? 'Try adjusting your search query or filters.'
+                      : 'Get started by creating your first upstream API service.'}
+                  </p>
+                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                    <button className="btn btn-primary btn-sm" onClick={() => setApimaticModalOpen(true)}>
+                      <Sparkles size={14} /> APIMatic Onboard
+                    </button>
+                    <button className="btn btn-secondary btn-sm" onClick={handleOpenRegisterModal}>
+                      <Plus size={14} /> Manual Registration
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <DataGrid<CreatorEndpointRow>
+                  rowData={gridRows}
+                  columnDefs={endpointsColumnDefs}
+                  title="Registered Endpoints & Gateway Routes"
+                  subtitle="Live upstream endpoints, unit execution rates, and one-click developer actions"
+                  pageSize={10}
+                  rowHeight={58}
+                  headerHeight={48}
+                  exportCsv={true}
+                  csvFileName="tooltoll-creator-endpoints"
+                  height="540px"
+                  onRowClicked={(event) => {
+                    if (event.data?.toolId) {
+                      handleOpenPostmanModal(event.data.toolId, event.data.endpointId);
+                    }
+                  }}
+                />
+              )}
+            </>
+          )}
 
-                              <td style={{ fontSize: '0.80rem', color: 'var(--text-dark-muted)' }}>
-                                v{tool.version}
-                              </td>
-
-                              <td>
-                                <span
-                                  className={`badge ${
-                                    (ep.status || tool.status) === 'APPROVED'
-                                      ? 'badge-emerald'
-                                      : (ep.status || tool.status) === 'PENDING_REVIEW'
-                                      ? 'badge-amber'
-                                      : 'badge-dark-neutral'
-                                  }`}
-                                >
-                                  {ep.status || tool.status}
-                                </span>
-                              </td>
-
-                              <td style={{ textAlign: 'right' }}>
-                                <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center' }}>
-                                  {/* Test Endpoint Button */}
-                                  <button
-                                    className="btn btn-secondary btn-sm"
-                                    onClick={() => handleOpenTestModal(tool, ep)}
-                                    title="Execute test call against this endpoint"
-                                    style={{ padding: '4px 8px', fontSize: '0.74rem' }}
-                                  >
-                                    <Play size={12} />
-                                    Test
-                                  </button>
-
-                                  {/* View Details */}
-                                  <button
-                                    className="btn btn-secondary btn-sm"
-                                    onClick={() => handleViewDetails(tool)}
-                                    title="View full API service & endpoint specifications"
-                                    style={{ padding: '4px 8px', fontSize: '0.74rem' }}
-                                  >
-                                    <Eye size={12} />
-                                  </button>
-
-                                  {/* Add Endpoint Button on Parent */}
-                                  {epIdx === 0 && (
-                                    <button
-                                      className="btn btn-secondary btn-sm"
-                                      onClick={() => handleOpenAddEndpointModal(tool.id)}
-                                      title="Add new endpoint to this API service"
-                                      style={{ padding: '4px 8px', fontSize: '0.74rem', color: 'var(--brand-orange)' }}
-                                    >
-                                      <Plus size={12} />
-                                      Route
-                                    </button>
-                                  )}
-
-                                  {/* Submit for Review if DRAFT */}
-                                  {(tool.status === 'DRAFT' || tool.status === 'TESTING') && epIdx === 0 && (
-                                    <button
-                                      className="btn btn-primary btn-sm"
-                                      onClick={() => handleTestAndSubmit(tool)}
-                                      style={{ padding: '4px 9px', fontSize: '0.74rem' }}
-                                    >
-                                      <Send size={12} />
-                                      Submit
-                                    </button>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </React.Fragment>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+          {/* Sub-tab 2: Postman Newman History AG Grid */}
+          {creatorSubTab === 'testHistory' && (
+            <DataGrid<ToolTestHistoryItem>
+              rowData={testHistory}
+              columnDefs={testHistoryColumnDefs}
+              title="Postman Technical Contract Test Runs"
+              subtitle="Auditable technical verification logs powered by Newman runtime execution"
+              loading={historyLoading}
+              emptyMessage="No Newman test runs recorded yet. Click 'Postman' on any endpoint above or open the suite to execute contract tests."
+              pageSize={10}
+              rowHeight={58}
+              headerHeight={48}
+              exportCsv={true}
+              csvFileName="tooltoll-postman-history"
+              height="540px"
+            />
           )}
         </div>
 
@@ -1892,6 +2406,30 @@ export const CreatorView: React.FC = () => {
                   <Code size={14} />
                   Download Client SDK (TS / Python)
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDetailsModalOpen(false);
+                    handleOpenPostmanModal(viewingTool.id);
+                  }}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: '6px',
+                    background: 'rgba(255, 108, 55, 0.12)',
+                    border: '1px solid rgba(255, 108, 55, 0.4)',
+                    color: '#FF6C37',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                  title="Execute Postman contract tests"
+                >
+                  <Layers size={14} />
+                  Postman Testing
+                </button>
                 <button type="button" className="btn btn-secondary" onClick={() => setDetailsModalOpen(false)}>
                   Close
                 </button>
@@ -1967,6 +2505,25 @@ export const CreatorView: React.FC = () => {
             });
             setTimeout(() => setNotification(null), 5000);
           }}
+          onStartTesting={(createdTool) => {
+            setApimaticModalOpen(false);
+            setSelectedToolForPostman(createdTool.id);
+            setPostmanModalOpen(true);
+          }}
+        />
+
+        {/* POSTMAN TECHNICAL TESTING MODAL (PHASE 2) */}
+        <PostmanTestingModal
+          isOpen={postmanModalOpen}
+          onClose={() => {
+            setPostmanModalOpen(false);
+            setSelectedToolForPostman(undefined);
+            setSelectedEndpointForPostman(undefined);
+          }}
+          tools={myTools}
+          initialToolId={selectedToolForPostman}
+          initialEndpointId={selectedEndpointForPostman}
+          onToolStatusUpdated={() => fetchData()}
         />
 
         {/* CLIENT SDK VIEWER MODAL */}

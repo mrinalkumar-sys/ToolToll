@@ -1109,3 +1109,339 @@ select option, .form-select option {
     animation: none !important;
   }
 }
+
+
+/* ============================================================================
+   AG GRID TOOLTOLL OBSIDIAN THEME CUSTOM OVERRIDES
+   Reuses ToolToll design system variables:
+   --bg-dark-base (#090A0E), --bg-dark-surface (#10121A), --bg-dark-card (#12141D),
+   --bg-dark-input (#0C0E15), --border-dark (rgba(255, 255, 255, 0.08)),
+   --brand-orange (#FF5500), --brand-orange-hover (#FF6A1A),
+   --text-dark-primary (#FFFFFF), --text-dark-secondary (#9FA4B5)
+   ============================================================================ */
+
+.tooltoll-ag-grid,
+.ag-theme-quartz-dark.tooltoll-ag-grid,
+.ag-theme-quartz.tooltoll-ag-grid,
+div[class*="ag-theme-"].tooltoll-ag-grid {
+  --ag-background-color: #0c0e15 !important;
+  --ag-data-background-color: #0c0e15 !important;
+  --ag-odd-row-background-color: #090a0e !important;
+  --ag-header-background-color: #12141D !important;
+  --ag-subheader-background-color: #12141D !important;
+  --ag-wrapper-background-color: #0c0e15 !important;
+  --ag-control-panel-background-color: #10121A !important;
+  --ag-menu-background-color: #12141D !important;
+  --ag-panel-background-color: #12141D !important;
+  --ag-popup-background-color: #12141D !important;
+  --ag-row-hover-color: #25212A !important;
+  --ag-selected-row-background-color: #2C2430 !important;
+  --ag-range-selection-border-color: #FF5500 !important;
+  --ag-foreground-color: #FFFFFF !important;
+  --ag-data-color: #FFFFFF !important;
+  --ag-secondary-foreground-color: #9FA4B5 !important;
+  --ag-header-foreground-color: #FFFFFF !important;
+  --ag-disabled-foreground-color: rgba(255, 255, 255, 0.35) !important;
+  --ag-border-color: rgba(255, 255, 255, 0.08) !important;
+  --ag-secondary-border-color: rgba(255, 255, 255, 0.05) !important;
+  --ag-header-column-separator-color: rgba(255, 255, 255, 0.12) !important;
+  --ag-header-column-resize-handle-color: rgba(255, 85, 0, 0.5) !important;
+  --ag-active-color: #FF5500 !important;
+  --ag-input-focus-border-color: #FF5500 !important;
+  --ag-checkbox-checked-color: #FF5500 !important;
+  --ag-checkbox-unchecked-color: rgba(255, 255, 255, 0.3) !important;
+  --ag-font-family: var(--font-sans, 'Inter', -apple-system, BlinkMacSystemFont, sans-serif) !important;
+  --ag-font-size: 13px !important;
+  --ag-grid-size: 8px !important;
+  --ag-row-height: 58px !important;
+  --ag-header-height: 48px !important;
+  --ag-cell-horizontal-padding: 16px !important;
+  background-color: #0c0e15 !important;
+  color: #FFFFFF !important;
+}
+
+/* Force dark obsidian background on all AG Grid internal roots & viewports */
+.tooltoll-ag-grid .ag-root,
+.tooltoll-ag-grid .ag-root-wrapper,
+.tooltoll-ag-grid .ag-body,
+.tooltoll-ag-grid .ag-body-viewport,
+.tooltoll-ag-grid .ag-center-cols-viewport,
+.tooltoll-ag-grid .ag-center-cols-container,
+.tooltoll-ag-grid .ag-center-cols-clipper {
+  background-color: #0c0e15 !important;
+  background: #0c0e15 !important;
+  color: #FFFFFF !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Row styling, alternating stripes & hover */
+.tooltoll-ag-grid .ag-row {
+  background-color: #0c0e15 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  color: #FFFFFF !important;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.tooltoll-ag-grid .ag-row-odd {
+  background-color: #090a0e !important;
+}
+
+/* Hover state: Lighter charcoal #25212A with subtle orange accent bar and high-contrast text */
+.tooltoll-ag-grid .ag-row-hover,
+.tooltoll-ag-grid .ag-row:hover {
+  background-color: #25212A !important;
+  background: #25212A !important;
+  color: #FFFFFF !important;
+  box-shadow: inset 3px 0 0 0 #FF5500 !important;
+}
+
+.tooltoll-ag-grid .ag-row-hover .ag-cell,
+.tooltoll-ag-grid .ag-row:hover .ag-cell {
+  background-color: transparent !important;
+  color: #FFFFFF !important;
+}
+
+/* Ensure AG Grid's internal row hover pseudo-element matches #25212A */
+.tooltoll-ag-grid .ag-row-hover:not(.ag-full-width-row) .ag-grid-scrolling-cells::before,
+.tooltoll-ag-grid .ag-row-hover:not(.ag-full-width-row) .ag-grid-pinned-left-cells::before,
+.tooltoll-ag-grid .ag-row-hover:not(.ag-full-width-row) .ag-grid-pinned-right-cells::before {
+  background-color: #25212A !important;
+  pointer-events: none !important;
+}
+
+/* Selected row styling with warm dark violet/charcoal */
+.tooltoll-ag-grid .ag-row-selected,
+.tooltoll-ag-grid .ag-row.ag-row-selected {
+  background-color: #2C2430 !important;
+  background: #2C2430 !important;
+  color: #FFFFFF !important;
+  box-shadow: inset 3px 0 0 0 #FF6C37 !important;
+}
+
+.tooltoll-ag-grid .ag-row-selected:hover,
+.tooltoll-ag-grid .ag-row-selected.ag-row-hover {
+  background-color: #332B38 !important;
+  background: #332B38 !important;
+  color: #FFFFFF !important;
+  box-shadow: inset 3px 0 0 0 #FF5500 !important;
+}
+
+.tooltoll-ag-grid .ag-row-selected .ag-cell {
+  background-color: transparent !important;
+  color: #FFFFFF !important;
+}
+
+/* Cell typography, alignment & auto-height multiline support */
+.tooltoll-ag-grid .ag-cell {
+  display: flex !important;
+  align-items: center !important;
+  color: #FFFFFF !important;
+  font-size: 0.82rem !important;
+  border-right: 1px solid transparent !important;
+  line-height: 1.4 !important;
+  padding: 8px 16px !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+}
+
+.tooltoll-ag-grid .ag-cell-auto-height {
+  display: flex !important;
+  align-items: center !important;
+  height: auto !important;
+}
+
+.tooltoll-ag-grid .ag-cell-auto-height .ag-cell-wrapper {
+  height: auto !important;
+  min-height: 100%;
+}
+
+.tooltoll-ag-grid .ag-cell-wrapper {
+  width: 100%;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.tooltoll-ag-grid .ag-cell-value {
+  width: 100%;
+  overflow: visible !important;
+}
+
+/* Horizontal scrollbar styling for seamless navigation */
+.tooltoll-ag-grid .ag-body-horizontal-scroll {
+  height: 9px !important;
+  min-height: 9px !important;
+  background-color: #090a0e !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+.tooltoll-ag-grid .ag-body-horizontal-scroll-viewport {
+  height: 9px !important;
+}
+
+.tooltoll-ag-grid .ag-body-horizontal-scroll ::-webkit-scrollbar-thumb,
+.tooltoll-ag-grid .ag-body-viewport ::-webkit-scrollbar-thumb {
+  background: rgba(255, 85, 0, 0.35);
+  border-radius: 4px;
+}
+
+.tooltoll-ag-grid .ag-body-horizontal-scroll ::-webkit-scrollbar-thumb:hover,
+.tooltoll-ag-grid .ag-body-viewport ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 85, 0, 0.65);
+}
+
+.tooltoll-ag-grid .ag-cell:focus,
+.tooltoll-ag-grid .ag-cell-focus {
+  border: 1px solid rgba(255, 85, 0, 0.8) !important;
+  outline: none !important;
+  background-color: transparent !important;
+}
+
+.tooltoll-ag-grid .ag-row:focus {
+  outline: none !important;
+}
+
+/* Column Header - strong contrast & professional appearance */
+.tooltoll-ag-grid .ag-header {
+  background-color: #12141D !important;
+  background: #12141D !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+.tooltoll-ag-grid .ag-header-row {
+  background-color: #12141D !important;
+  color: #9FA4B5 !important;
+}
+
+.tooltoll-ag-grid .ag-header-cell {
+  background-color: #12141D !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+.tooltoll-ag-grid .ag-header-cell-text {
+  font-family: var(--font-sans, 'Inter', sans-serif) !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  color: #9FA4B5 !important;
+}
+
+.tooltoll-ag-grid .ag-header-cell:hover .ag-header-cell-text {
+  color: #FFFFFF !important;
+}
+
+/* Header sort & filter icons - bright & clearly visible */
+.tooltoll-ag-grid .ag-header-icon,
+.tooltoll-ag-grid .ag-sort-indicator-icon,
+.tooltoll-ag-grid .ag-icon-asc,
+.tooltoll-ag-grid .ag-icon-desc,
+.tooltoll-ag-grid .ag-icon-filter,
+.tooltoll-ag-grid .ag-icon-menu {
+  color: #FF5500 !important;
+  opacity: 0.9 !important;
+}
+
+.tooltoll-ag-grid .ag-icon-none {
+  color: #646A7E !important;
+  opacity: 0.5 !important;
+}
+
+.tooltoll-ag-grid .ag-header-cell:hover .ag-icon-none {
+  opacity: 0.8 !important;
+}
+
+/* Pagination Panel */
+.tooltoll-ag-grid .ag-paging-panel {
+  background-color: #12141D !important;
+  background: #12141D !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #9FA4B5 !important;
+  font-size: 0.80rem !important;
+  padding: 10px 16px !important;
+  height: 44px !important;
+}
+
+.tooltoll-ag-grid .ag-paging-panel span {
+  color: #9FA4B5 !important;
+}
+
+.tooltoll-ag-grid .ag-paging-page-summary-panel .ag-current-page {
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+}
+
+.tooltoll-ag-grid .ag-paging-button {
+  color: #9FA4B5 !important;
+  opacity: 0.85 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.tooltoll-ag-grid .ag-paging-button:hover:not(.ag-disabled) {
+  color: #FF5500 !important;
+  opacity: 1 !important;
+  transform: scale(1.1) !important;
+}
+
+.tooltoll-ag-grid .ag-paging-button.ag-disabled {
+  opacity: 0.3 !important;
+  cursor: not-allowed !important;
+}
+
+/* Popups, Dropdowns & Menus (appended to body or container) */
+.ag-theme-quartz-dark .ag-menu,
+.ag-theme-quartz-dark .ag-filter,
+.ag-theme-quartz .ag-menu,
+.ag-theme-quartz .ag-filter,
+.ag-popup-child .ag-menu,
+.ag-popup-child .ag-filter,
+.ag-popup-child .ag-column-select,
+.tooltoll-ag-grid .ag-menu,
+.tooltoll-ag-grid .ag-filter {
+  background-color: #12141D !important;
+  background: #12141D !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-radius: 8px !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 85, 0, 0.15) !important;
+}
+
+/* Filter inputs & selects inside popups */
+.ag-popup input[type="text"],
+.ag-popup input:not([type]),
+.tooltoll-ag-grid input[type="text"],
+.tooltoll-ag-grid input:not([type]) {
+  background-color: #0C0E15 !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  color: #FFFFFF !important;
+  border-radius: 6px !important;
+  padding: 6px 10px !important;
+  font-size: 0.82rem !important;
+}
+
+.ag-popup input:focus,
+.tooltoll-ag-grid input:focus {
+  border-color: #FF5500 !important;
+  outline: none !important;
+}
+
+.ag-popup .ag-picker-field-wrapper,
+.tooltoll-ag-grid .ag-picker-field-wrapper {
+  background-color: #0C0E15 !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  color: #FFFFFF !important;
+  border-radius: 6px !important;
+}
+
+.ag-popup .ag-menu-option,
+.tooltoll-ag-grid .ag-menu-option {
+  color: #FFFFFF !important;
+  font-size: 0.82rem !important;
+}
+
+.ag-popup .ag-menu-option-active,
+.tooltoll-ag-grid .ag-menu-option-active {
+  background-color: rgba(255, 85, 0, 0.12) !important;
+  color: #FF5500 !important;
+}

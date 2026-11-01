@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { UserRole } from '../../types';
-import { useAuth } from '../../context/AuthContext';
+
 import { ChevronDown, Bot, Hammer, Shield, LogOut } from 'lucide-react';
 
 interface RoleSelectorProps {
@@ -25,7 +25,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
   onLogout,
   isLoggingOut = false,
 }) => {
-  const { user } = useAuth();
+
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -141,7 +141,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
         />
       </button>
 
-      {/* Popover Dropdown Menu (User session profile & Sign Out - no role switching) */}
+      {/* Popover Dropdown Menu (Sign Out only) */}
       {isOpen && (
         <div
           role="menu"
@@ -151,101 +151,52 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
             position: 'absolute',
             top: 'calc(100% + 6px)',
             right: 0,
-            minWidth: '220px',
+            minWidth: '150px',
             background: '#111827',
             border: '1px solid rgba(255, 255, 255, 0.14)',
             borderRadius: 'var(--radius-sm)',
             boxShadow: '0 12px 32px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05)',
             zIndex: 1050,
-            padding: '10px 12px',
+            padding: '6px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '8px',
             animation: 'fadeIn 0.15s ease-out',
           }}
         >
-          {/* User Details */}
-          <div>
-            <div
-              style={{
-                fontSize: '0.85rem',
-                fontWeight: 800,
-                color: '#FFFFFF',
-                lineHeight: 1.2,
-              }}
-            >
-              {user?.name || user?.email || 'User'}
-            </div>
-            <div
-              style={{
-                fontSize: '0.72rem',
-                color: 'var(--text-dark-muted)',
-                marginTop: '2px',
-                wordBreak: 'break-all',
-              }}
-            >
-              {user?.email}
-            </div>
-            <div style={{ marginTop: '6px' }}>
-              <span
-                className={`badge ${
-                  roleId === 'admin'
-                    ? 'badge-cyan'
-                    : roleId === 'creator'
-                    ? 'badge-orange'
-                    : 'badge-emerald'
-                }`}
-                style={{ fontSize: '0.64rem', padding: '2px 7px' }}
-              >
-                {currentRoleObj.sublabel}
-              </span>
-            </div>
-          </div>
-
           {onLogout && (
-            <>
-              <div
-                style={{
-                  height: '1px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                  margin: '4px 0',
-                }}
-              />
-
-              <button
-                type="button"
-                role="menuitem"
-                disabled={isLoggingOut}
-                className="role-option-btn role-logout-btn"
-                onClick={() => {
-                  setIsOpen(false);
-                  onLogout();
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '7px 8px',
-                  borderRadius: 'var(--radius-xs)',
-                  border: '1px solid transparent',
-                  background: 'rgba(239, 68, 68, 0.08)',
-                  color: '#F87171',
-                  cursor: isLoggingOut ? 'wait' : 'pointer',
-                  textAlign: 'left',
-                  width: '100%',
-                  outline: 'none',
-                  opacity: isLoggingOut ? 0.6 : 1,
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
-                }}
-              >
-                <LogOut size={13} color="#EF4444" strokeWidth={2.2} />
-                <span>{isLoggingOut ? 'Signing out...' : 'Sign Out'}</span>
-              </button>
-            </>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={isLoggingOut}
+              className="role-option-btn role-logout-btn"
+              onClick={() => {
+                setIsOpen(false);
+                onLogout();
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 12px',
+                borderRadius: 'var(--radius-xs)',
+                border: '1px solid transparent',
+                background: 'rgba(239, 68, 68, 0.08)',
+                color: '#F87171',
+                cursor: isLoggingOut ? 'wait' : 'pointer',
+                textAlign: 'left',
+                width: '100%',
+                outline: 'none',
+                opacity: isLoggingOut ? 0.6 : 1,
+                fontSize: '0.80rem',
+                fontWeight: 600,
+              }}
+            >
+              <LogOut size={14} color="#EF4444" strokeWidth={2.2} />
+              <span>{isLoggingOut ? 'Signing out...' : 'Sign Out'}</span>
+            </button>
           )}
         </div>
       )}
-    </div>
+      </div>
   );
 };

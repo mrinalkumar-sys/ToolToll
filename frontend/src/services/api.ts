@@ -22,6 +22,8 @@ import {
   ApimaticValidationReport,
   ToolTollDraftConfig,
   SdkGenerationResult,
+  PostmanTestReport,
+  ToolTestHistoryItem,
 } from '../types';
 
 const API_BASE = '/api';
@@ -2045,6 +2047,46 @@ class ApiService {
 
   async getToolSdk(toolId: string, language: 'typescript' | 'python'): Promise<SdkGenerationResult> {
     return this.request<SdkGenerationResult>('/onboarding/sdk/' + toolId + '/' + language);
+  }
+
+  // ==========================================
+  // Postman API Testing & Collection Export
+  // ==========================================
+  async runPostmanTests(payload: {
+    toolId: string;
+    endpointId?: string;
+    sampleInput?: Record<string, unknown>;
+  }): Promise<PostmanTestReport> {
+    return this.request<PostmanTestReport>('/testing/run', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async getPostmanCollection(toolId: string, endpointId?: string): Promise<any> {
+    const query = endpointId ? '?endpointId=' + encodeURIComponent(endpointId) : '';
+    return this.request<any>('/testing/' + toolId + '/collection' + query);
+  }
+
+  async getPostmanEnvironment(toolId: string): Promise<any> {
+    return this.request<any>('/testing/' + toolId + '/environment');
+  }
+
+  async getToolTestHistory(toolId: string): Promise<{ history: ToolTestHistoryItem[] }> {
+    return this.request<{ history: ToolTestHistoryItem[] }>('/testing/' + toolId + '/history');
+  }
+
+  async syncCollectionToPostman(toolId: string, workspaceId?: string): Promise<{
+    synced: boolean;
+    message?: string;
+    collectionId?: string;
+    collectionUid?: string;
+    name?: string;
+  }> {
+    return this.request<any>('/testing/' + toolId + '/sync', {
+      method: 'POST',
+      body: JSON.stringify({ workspaceId }),
+    });
   }
 }
 

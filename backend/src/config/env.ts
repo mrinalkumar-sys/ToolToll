@@ -26,6 +26,8 @@ const envSchema = z.object({
   MAX_REQUEST_SIZE: z.string().transform((val) => parseInt(val, 10)).default('1048576'),
   APIMATIC_API_KEY: z.string().optional().default(''),
   APIMATIC_BASE_URL: z.string().url().default('https://api.apimatic.io'),
+  POSTMAN_API_KEY: z.string().optional().default(''),
+  POSTMAN_BASE_URL: z.string().url().default('https://api.getpostman.com'),
 });
 
 const parseEnv = () => {

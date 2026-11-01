@@ -446,3 +446,48 @@ export interface SdkGenerationResult {
   filename: string;
   code: string;
 }
+
+export interface PostmanAssertionResult {
+  name: string;
+  passed: boolean;
+  error?: string;
+}
+
+export interface PostmanTestReport {
+  testRunId: string;
+  toolId: string;
+  toolName: string;
+  endpointId?: string | null;
+  endpointName?: string | null;
+  httpMethod: string;
+  endpointPath: string;
+  targetUrl: string;
+  status: 'PASSED' | 'FAILED' | 'ERROR';
+  statusCode: number;
+  latencyMs: number;
+  totalTests: number;
+  passedTests: number;
+  failedTests: number;
+  assertions: PostmanAssertionResult[];
+  responseBody: unknown;
+  errorMessage?: string;
+  executedAt: string;
+}
+
+export interface ToolTestHistoryItem {
+  id: string;
+  endpointId?: string | null;
+  endpointName: string;
+  httpMethod: string;
+  endpointPath: string;
+  statusCode: number;
+  latencyMs: number;
+  isSuccess: boolean;
+  errorMessage?: string | null;
+  sampleInput: unknown;
+  totalTests: number;
+  passedTests: number;
+  failedTests: number;
+  assertions: PostmanAssertionResult[];
+  createdAt: string;
+}

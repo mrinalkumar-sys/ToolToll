@@ -1,18 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
-import { formatMicroUsd, formatDate } from '../../utils/formatters';
-import { LedgerEntry } from '../../types';
+import { formatMicroUsd } from '../../utils/formatters';
+import { LedgerEntry, ToolCall } from '../../types';
 import {
-  Wallet,
+  DataGrid,
+  ColDef,
+  StatusCellRenderer,
+  MicroUsdCellRenderer,
+  DateCellRenderer,
+} from '../common/DataGrid';
+import {
   Plus,
   CreditCard,
   ArrowUpRight,
   ArrowDownLeft,
-  ShieldCheck,
-  Zap,
-  Lock,
-  Layers,
+  FileSpreadsheet,
+  Activity,
+  History,
 } from 'lucide-react';
 
 interface WalletViewProps {
@@ -21,27 +26,243 @@ interface WalletViewProps {
 
 export const WalletView: React.FC<WalletViewProps> = ({ onOpenTopup }) => {
   const { wallet, refreshWallet, isAuthenticated, loginDemo } = useAuth();
+  const [activeTab, setActiveTab] = useState<'ledger' | 'calls'>('ledger');
   const [transactions, setTransactions] = useState<LedgerEntry[]>([]);
+  const [calls, setCalls] = useState<ToolCall[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchTransactions = async () => {
-    setLoading(true);
     try {
       const data = await api.getTransactions();
       setTransactions(data);
     } catch (err) {
       console.error('Failed to load wallet transactions:', err);
-    } finally {
-      setLoading(false);
     }
   };
 
+  const fetchCalls = async () => {
+    try {
+      const callsData = await api.getUserCalls();
+      setCalls(callsData || []);
+    } catch (err) {
+      console.error('Failed to load user calls:', err);
+    }
+  };
+
+  const loadData = async () => {
+    setLoading(true);
+    await Promise.all([fetchTransactions(), fetchCalls()]);
+    setLoading(false);
+  };
+
   useEffect(() => {
-    fetchTransactions();
+    loadData();
   }, []);
 
+  // AG Grid column definitions for Double-Entry Ledger
+  const ledgerColumnDefs: ColDef<LedgerEntry>[] = [
+    {
+      headerName: 'Timestamp',
+      field: 'createdAt',
+      cellRenderer: DateCellRenderer,
+      sort: 'desc',
+      width: 175,
+      minWidth: 165,
+      filter: 'agDateColumnFilter',
+    },
+    {
+      headerName: 'Entry Type',
+      field: 'entryType',
+      cellRenderer: (params: any) => {
+        const isCredit = params.value === 'CREDIT';
+        return (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '2px 8px',
+              borderRadius: '4px',
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              background: isCredit ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+              color: isCredit ? '#10B981' : '#EF4444',
+              border: `1px solid ${isCredit ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+            }}
+          >
+            {isCredit ? <ArrowDownLeft size={12} /> : <ArrowUpRight size={12} />}
+            {params.value}
+          </span>
+        );
+      },
+      width: 140,
+      minWidth: 130,
+    },
+    {
+      headerName: 'Reference Type',
+      field: 'referenceType',
+      width: 165,
+      minWidth: 150,
+      cellRenderer: (params: any) => (
+        <span style={{ fontWeight: 700, fontSize: '0.82rem', color: '#FFFFFF' }}>
+          {params.value || '—'}
+        </span>
+      ),
+    },
+    {
+      headerName: 'Amount',
+      field: 'amount',
+      width: 150,
+      minWidth: 140,
+      cellRenderer: (params: any) => {
+        const isCredit = params.data?.entryType === 'CREDIT';
+        return (
+          <span
+            style={{
+              fontFamily: 'var(--font-mono, monospace)',
+              fontWeight: 800,
+              color: isCredit ? '#34D399' : '#F87171',
+            }}
+          >
+            {isCredit ? '+' : '-'}
+            {formatMicroUsd(params.value)}
+          </span>
+        );
+      },
+    },
+    {
+      headerName: 'Running Balance',
+      field: 'runningBalance',
+      width: 165,
+      minWidth: 155,
+      cellRenderer: MicroUsdCellRenderer,
+    },
+    {
+      headerName: 'Description / Audit Note',
+      field: 'description',
+      flex: 1.6,
+      minWidth: 260,
+      autoHeight: true,
+      wrapText: true,
+      cellRenderer: (params: any) => (
+        <span style={{ fontSize: '0.82rem', color: 'var(--text-dark-secondary)', wordBreak: 'break-word', overflowWrap: 'anywhere', whiteSpace: 'normal', lineHeight: 1.35, display: 'block', padding: '6px 0' }}>
+          {params.value || params.data?.referenceId || '—'}
+        </span>
+      ),
+    },
+  ];
+
+  // AG Grid column definitions for Consumer API Executions
+  const callsColumnDefs: ColDef<ToolCall>[] = [
+    {
+      headerName: 'Timestamp',
+      field: 'createdAt',
+      cellRenderer: DateCellRenderer,
+      sort: 'desc',
+      width: 175,
+      minWidth: 165,
+    },
+    {
+      headerName: 'API / Tool',
+      field: 'tool.name' as any,
+      valueGetter: (params: any) => params.data?.tool?.name || params.data?.toolId || 'Unknown Tool',
+      flex: 1.5,
+      minWidth: 220,
+      autoHeight: true,
+      wrapText: true,
+      cellRenderer: (params: any) => (
+        <span style={{ fontWeight: 700, color: '#FFFFFF', fontSize: '0.84rem', wordBreak: 'break-word', overflowWrap: 'anywhere', whiteSpace: 'normal', lineHeight: 1.35, display: 'block', padding: '6px 0' }}>
+          {params.value}
+        </span>
+      ),
+    },
+    {
+      headerName: 'Agent Caller',
+      field: 'agent.name' as any,
+      valueGetter: (params: any) => params.data?.agent?.name || params.data?.agentId || 'Direct Invocation',
+      width: 190,
+      minWidth: 175,
+      autoHeight: true,
+      wrapText: true,
+      cellRenderer: (params: any) => (
+        <span style={{ fontSize: '0.82rem', color: '#E2E8F0', wordBreak: 'break-word', overflowWrap: 'anywhere', whiteSpace: 'normal', lineHeight: 1.35, display: 'block', padding: '6px 0' }}>
+          {params.value}
+        </span>
+      ),
+    },
+    {
+      headerName: 'Status',
+      field: 'status',
+      cellRenderer: StatusCellRenderer,
+      width: 135,
+      minWidth: 125,
+    },
+    {
+      headerName: 'HTTP Code',
+      field: 'httpStatus',
+      width: 115,
+      minWidth: 105,
+      cellRenderer: (params: any) => {
+        const code = params.value;
+        if (!code) return <span style={{ color: 'var(--text-dark-muted)' }}>—</span>;
+        const is2xx = code >= 200 && code < 300;
+        return (
+          <span
+            style={{
+              fontFamily: 'var(--font-mono, monospace)',
+              fontWeight: 700,
+              fontSize: '0.80rem',
+              color: is2xx ? '#34D399' : '#EF4444',
+            }}
+          >
+            {code}
+          </span>
+        );
+      },
+    },
+    {
+      headerName: 'Latency',
+      field: 'latencyMs',
+      width: 115,
+      minWidth: 105,
+      cellRenderer: (params: any) =>
+        params.value != null ? (
+          <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.82rem', color: '#FFFFFF' }}>
+            {params.value}ms
+          </span>
+        ) : (
+          '—'
+        ),
+    },
+    {
+      headerName: 'Cost',
+      field: 'priceMicroUsd',
+      width: 140,
+      minWidth: 130,
+      cellRenderer: MicroUsdCellRenderer,
+    },
+    {
+      headerName: 'Call ID',
+      field: 'id',
+      width: 150,
+      minWidth: 140,
+      cellRenderer: (params: any) => (
+        <span
+          style={{
+            fontFamily: 'var(--font-mono, monospace)',
+            fontSize: '0.74rem',
+            color: 'var(--text-dark-muted)',
+          }}
+        >
+          {params.value?.slice(0, 10)}...
+        </span>
+      ),
+    },
+  ];
+
   return (
-    <div className="section-dark" style={{ minHeight: '85vh', paddingTop: '40px' }}>
+    <div className="section-dark" style={{ minHeight: '85vh', paddingTop: '40px', paddingBottom: '60px' }}>
       <div className="container-editorial">
         {/* Header */}
         <div
@@ -71,7 +292,7 @@ export const WalletView: React.FC<WalletViewProps> = ({ onOpenTopup }) => {
               Wallet & Ledger Records.
             </h1>
             <p style={{ color: 'var(--text-dark-secondary)', maxWidth: '720px', fontSize: '1.02rem', lineHeight: 1.6 }}>
-              Auditable double-entry accounting operating with integer micro-USD precision. Funds are atomically reserved before execution and captured upon verified completion.
+              Auditable double-entry accounting operating with integer micro-USD precision. Funds are atomically reserved before execution and captured upon verified completion. Powered by AG Grid interactive tabular analysis.
             </p>
           </div>
 
@@ -142,7 +363,7 @@ export const WalletView: React.FC<WalletViewProps> = ({ onOpenTopup }) => {
                   }
                   await api.mockTopup('10000000'); // $10
                   await refreshWallet();
-                  fetchTransactions();
+                  loadData();
                 }}
               >
                 + Quick $10
@@ -151,91 +372,98 @@ export const WalletView: React.FC<WalletViewProps> = ({ onOpenTopup }) => {
           </div>
         </div>
 
-        {/* Ledger Transactions Table */}
-        <div className="card-dark" style={{ padding: '28px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-            <div>
-              <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#FFFFFF' }}>
-                Append-Only Ledger Audit Trail
-              </h3>
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-dark-secondary)' }}>
-                Immutable sequence of deposits, reservations, captures, and compensating refunds
-              </p>
-            </div>
-            <button className="btn btn-secondary btn-sm" onClick={fetchTransactions}>
-              Refresh Ledger
+        {/* Tab Controls */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            marginBottom: '20px',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            paddingBottom: '12px',
+          }}
+        >
+          <button
+            onClick={() => setActiveTab('ledger')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 18px',
+              borderRadius: '8px',
+              fontSize: '0.88rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              border: activeTab === 'ledger' ? '1px solid var(--accent-orange, #FF5500)' : '1px solid transparent',
+              background: activeTab === 'ledger' ? 'rgba(255, 85, 0, 0.12)' : 'transparent',
+              color: activeTab === 'ledger' ? '#FFFFFF' : 'var(--text-dark-secondary)',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <History size={16} color={activeTab === 'ledger' ? '#FF5500' : 'currentColor'} />
+            Ledger Audit Trail ({transactions.length})
+          </button>
+
+          <button
+            onClick={() => setActiveTab('calls')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 18px',
+              borderRadius: '8px',
+              fontSize: '0.88rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              border: activeTab === 'calls' ? '1px solid var(--accent-orange, #FF5500)' : '1px solid transparent',
+              background: activeTab === 'calls' ? 'rgba(255, 85, 0, 0.12)' : 'transparent',
+              color: activeTab === 'calls' ? '#FFFFFF' : 'var(--text-dark-secondary)',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <Activity size={16} color={activeTab === 'calls' ? '#FF5500' : 'currentColor'} />
+            Recent API Executions ({calls.length})
+          </button>
+
+          <div style={{ marginLeft: 'auto' }}>
+            <button className="btn btn-secondary btn-sm" onClick={loadData}>
+              Refresh Data
             </button>
           </div>
-
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '50px 0', color: 'var(--text-dark-muted)' }}>
-              Loading ledger entries...
-            </div>
-          ) : transactions.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '50px 0', color: 'var(--text-dark-muted)' }}>
-              No transaction records yet. Fund your wallet or execute an agent workflow to populate the ledger.
-            </div>
-          ) : (
-            <div className="data-table-container">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Timestamp</th>
-                    <th>Entry Type</th>
-                    <th>Reference</th>
-                    <th>Amount (USD)</th>
-                    <th>Running Balance</th>
-                    <th>Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {transactions.map((tx) => (
-                    <tr key={tx.id}>
-                      <td style={{ fontSize: '0.8rem', color: 'var(--text-dark-muted)' }}>
-                        {formatDate(tx.createdAt)}
-                      </td>
-                      <td>
-                        <span
-                          className={`badge ${
-                            tx.entryType === 'CREDIT' ? 'badge-emerald' : 'badge-rose'
-                          }`}
-                        >
-                          {tx.entryType === 'CREDIT' ? (
-                            <ArrowDownLeft size={12} />
-                          ) : (
-                            <ArrowUpRight size={12} />
-                          )}
-                          {tx.entryType}
-                        </span>
-                      </td>
-                      <td>
-                        <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#FFFFFF' }}>
-                          {tx.referenceType}
-                        </span>
-                      </td>
-                      <td
-                        style={{
-                          fontFamily: 'var(--font-mono)',
-                          fontWeight: 800,
-                          color: tx.entryType === 'CREDIT' ? '#34D399' : '#F87171',
-                        }}
-                      >
-                        {tx.entryType === 'CREDIT' ? '+' : '-'}
-                        {formatMicroUsd(tx.amount)}
-                      </td>
-                      <td style={{ fontFamily: 'var(--font-mono)', color: '#FFFFFF', fontWeight: 600 }}>
-                        {formatMicroUsd(tx.runningBalance)}
-                      </td>
-                      <td style={{ fontSize: '0.82rem', color: 'var(--text-dark-secondary)' }}>
-                        {tx.description || tx.referenceId || '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
+
+        {/* AG Grid Displays */}
+        {activeTab === 'ledger' ? (
+          <DataGrid<LedgerEntry>
+            rowData={transactions}
+            columnDefs={ledgerColumnDefs}
+            title="Append-Only Ledger Audit Trail"
+            subtitle="Immutable sequence of deposits, reservations, captures, and compensating refunds"
+            loading={loading}
+            emptyMessage="No ledger records yet. Fund your wallet or execute an agent workflow to populate the ledger."
+            pageSize={10}
+            rowHeight={58}
+            headerHeight={48}
+            exportCsv={true}
+            csvFileName="tooltoll-wallet-ledger"
+            height="520px"
+          />
+        ) : (
+          <DataGrid<ToolCall>
+            rowData={calls}
+            columnDefs={callsColumnDefs}
+            title="Consumer API Executions"
+            subtitle="Real-time log of paid tool invocations, execution latencies, and transaction statuses"
+            loading={loading}
+            emptyMessage="No tool calls recorded yet. Execute an API via the Marketplace or AI Planner."
+            pageSize={10}
+            rowHeight={58}
+            headerHeight={48}
+            exportCsv={true}
+            csvFileName="tooltoll-api-calls"
+            height="520px"
+          />
+        )}
       </div>
     </div>
   );

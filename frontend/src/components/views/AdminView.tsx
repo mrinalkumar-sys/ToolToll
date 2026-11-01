@@ -10,6 +10,14 @@ import {
 } from '../../types';
 import { formatMicroUsd, formatDate } from '../../utils/formatters';
 import {
+  DataGrid,
+  ColDef,
+  StatusCellRenderer,
+  MethodCellRenderer,
+  MicroUsdCellRenderer,
+  DateCellRenderer,
+} from '../common/DataGrid';
+import {
   Shield,
   CheckCircle,
   XCircle,
@@ -212,6 +220,415 @@ export const AdminView: React.FC<AdminViewProps> = ({
     tx.consumerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     tx.creatorName.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // AG Grid Column Definitions for Admin Console
+  const moderationColumnDefs: ColDef<Tool>[] = [
+    {
+      headerName: 'API Name & Route',
+      field: 'name',
+      flex: 1.8,
+      minWidth: 280,
+      autoHeight: true,
+      wrapText: true,
+      cellRenderer: (params: any) => {
+        const tool = params.data;
+        if (!tool) return '—';
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', justifyContent: 'center', padding: '8px 0', width: '100%' }}>
+            <div style={{ fontWeight: 700, color: '#FFFFFF', fontSize: '0.84rem', wordBreak: 'break-word', overflowWrap: 'anywhere', whiteSpace: 'normal', lineHeight: 1.35 }}>
+              {tool.name}
+            </div>
+            <div style={{ fontSize: '0.72rem', color: '#FF6C37', fontFamily: 'var(--font-mono)', wordBreak: 'break-word', overflowWrap: 'anywhere', whiteSpace: 'normal' }}>
+              {tool.slug}
+            </div>
+            {tool.description && (
+              <div
+                style={{
+                  fontSize: '0.72rem',
+                  color: 'var(--text-dark-muted)',
+                  wordBreak: 'break-word',
+                  overflowWrap: 'anywhere',
+                  whiteSpace: 'normal',
+                  lineHeight: 1.35,
+                  marginTop: '2px',
+                }}
+                title={tool.description}
+              >
+                {tool.description}
+              </div>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      headerName: 'Category',
+      field: 'category',
+      width: 150,
+      minWidth: 140,
+      cellRenderer: (params: any) => (
+        <span className="badge badge-dark-neutral" style={{ fontSize: '0.72rem', padding: '3px 8px', whiteSpace: 'nowrap' }}>
+          {params.value}
+        </span>
+      ),
+    },
+    {
+      headerName: 'Creator',
+      field: 'creator.name' as any,
+      valueGetter: (params: any) => params.data?.creator?.name || 'Verified Creator',
+      width: 200,
+      minWidth: 180,
+      autoHeight: true,
+      wrapText: true,
+      cellRenderer: (params: any) => (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', justifyContent: 'center', padding: '6px 0', width: '100%' }}>
+          <div style={{ fontWeight: 600, color: '#FFFFFF', fontSize: '0.82rem', wordBreak: 'break-word', overflowWrap: 'anywhere', whiteSpace: 'normal' }}>
+            {params.value}
+          </div>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-dark-muted)', wordBreak: 'break-all', overflowWrap: 'anywhere', whiteSpace: 'normal' }}>
+            {params.data?.creator?.email || ''}
+          </div>
+        </div>
+      ),
+    },
+    {
+      headerName: 'Method',
+      field: 'httpMethod',
+      width: 105,
+      minWidth: 95,
+      cellRenderer: MethodCellRenderer,
+    },
+    {
+      headerName: 'Endpoint Path',
+      field: 'endpointPath',
+      flex: 1.4,
+      minWidth: 200,
+      autoHeight: true,
+      wrapText: true,
+      cellRenderer: (params: any) => (
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.80rem', color: '#FFFFFF', wordBreak: 'break-all', overflowWrap: 'anywhere', whiteSpace: 'normal', padding: '6px 0', display: 'block' }}>
+          {params.value || '/'}
+        </span>
+      ),
+    },
+    {
+      headerName: 'Price / Call',
+      field: 'priceMicroUsd',
+      width: 140,
+      minWidth: 130,
+      cellRenderer: MicroUsdCellRenderer,
+    },
+    {
+      headerName: 'Status',
+      field: 'status',
+      width: 140,
+      minWidth: 130,
+      cellRenderer: StatusCellRenderer,
+    },
+    {
+      headerName: 'Moderator Actions',
+      field: 'id',
+      width: 220,
+      minWidth: 210,
+      sortable: false,
+      filter: false,
+      cellRenderer: (params: any) => {
+        const tool = params.data;
+        if (!tool) return null;
+        return (
+          <div style={{ display: 'inline-flex', gap: '8px', alignItems: 'center', height: '100%' }}>
+            <button
+              className="btn btn-sm"
+              style={{
+                background: 'rgba(16, 185, 129, 0.15)',
+                color: '#34D399',
+                border: '1px solid rgba(16, 185, 129, 0.35)',
+                fontWeight: 700,
+                padding: '5px 10px',
+                fontSize: '0.76rem',
+                whiteSpace: 'nowrap',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+              onClick={() => {
+                setSelectedTool(tool);
+                setActionType('approve');
+                setModerationReason('Endpoint verified; schema matches output parameters and passed test call');
+              }}
+            >
+              <CheckCircle size={13} />
+              Approve
+            </button>
+            <button
+              className="btn btn-sm"
+              style={{
+                background: 'rgba(239, 68, 68, 0.15)',
+                color: '#F87171',
+                border: '1px solid rgba(239, 68, 68, 0.35)',
+                fontWeight: 700,
+                padding: '5px 10px',
+                fontSize: '0.76rem',
+                whiteSpace: 'nowrap',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+              onClick={() => {
+                setSelectedTool(tool);
+                setActionType('reject');
+                setModerationReason('Does not meet platform quality guidelines or endpoint is unresponsive');
+              }}
+            >
+              <XCircle size={13} />
+              Reject
+            </button>
+          </div>
+        );
+      },
+    },
+  ];
+
+  const consumersColumnDefs: ColDef<AdminConsumerListing>[] = [
+    {
+      headerName: 'Consumer Profile',
+      field: 'name',
+      flex: 1.5,
+      minWidth: 240,
+      autoHeight: true,
+      wrapText: true,
+      cellRenderer: (params: any) => (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', justifyContent: 'center', padding: '6px 0', width: '100%' }}>
+          <div style={{ fontWeight: 700, color: '#FFFFFF', fontSize: '0.84rem', wordBreak: 'break-word', overflowWrap: 'anywhere', whiteSpace: 'normal' }}>
+            {params.value}
+          </div>
+          <div style={{ fontSize: '0.74rem', color: 'var(--text-dark-muted)', wordBreak: 'break-all', overflowWrap: 'anywhere', whiteSpace: 'normal' }}>
+            {params.data?.email}
+          </div>
+        </div>
+      ),
+    },
+    {
+      headerName: 'Joined Date',
+      field: 'createdAt',
+      width: 165,
+      minWidth: 155,
+      cellRenderer: DateCellRenderer,
+    },
+    {
+      headerName: 'Wallet Balance',
+      field: 'walletBalanceMicroUsd',
+      width: 150,
+      minWidth: 140,
+      cellRenderer: MicroUsdCellRenderer,
+    },
+    {
+      headerName: 'Reserved Mutex',
+      field: 'walletReservedMicroUsd',
+      width: 150,
+      minWidth: 140,
+      cellRenderer: MicroUsdCellRenderer,
+    },
+    {
+      headerName: 'Active Agents',
+      field: 'agentsCount',
+      width: 140,
+      minWidth: 130,
+      cellRenderer: (params: any) => (
+        <span className="badge badge-dark-neutral" style={{ fontSize: '0.72rem', padding: '3px 8px', whiteSpace: 'nowrap' }}>
+          {params.value} {params.value === 1 ? 'Agent' : 'Agents'}
+        </span>
+      ),
+    },
+    {
+      headerName: 'Total Calls',
+      field: 'totalCallsCount',
+      width: 130,
+      minWidth: 120,
+      cellRenderer: (params: any) => (
+        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#FFFFFF', fontSize: '0.84rem' }}>
+          {params.value || 0}
+        </span>
+      ),
+    },
+    {
+      headerName: 'Total Spent',
+      field: 'totalSpentMicroUsd' as any,
+      valueGetter: (params: any) => params.data?.totalSpentMicroUsd || '0',
+      width: 150,
+      minWidth: 140,
+      cellRenderer: MicroUsdCellRenderer,
+    },
+  ];
+
+  const creatorsColumnDefs: ColDef<AdminCreatorListing>[] = [
+    {
+      headerName: 'Creator Name & Email',
+      field: 'name',
+      flex: 1.5,
+      minWidth: 240,
+      autoHeight: true,
+      wrapText: true,
+      cellRenderer: (params: any) => (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', justifyContent: 'center', padding: '6px 0', width: '100%' }}>
+          <div style={{ fontWeight: 700, color: '#FFFFFF', fontSize: '0.84rem', wordBreak: 'break-word', overflowWrap: 'anywhere', whiteSpace: 'normal' }}>
+            {params.value}
+          </div>
+          <div style={{ fontSize: '0.74rem', color: 'var(--text-dark-muted)', wordBreak: 'break-all', overflowWrap: 'anywhere', whiteSpace: 'normal' }}>
+            {params.data?.email}
+          </div>
+        </div>
+      ),
+    },
+    {
+      headerName: 'Joined Date',
+      field: 'createdAt',
+      width: 165,
+      minWidth: 155,
+      cellRenderer: DateCellRenderer,
+    },
+    {
+      headerName: 'Registered APIs',
+      field: 'totalTools',
+      width: 150,
+      minWidth: 140,
+      cellRenderer: (params: any) => (
+        <span className="badge badge-dark-neutral" style={{ fontSize: '0.72rem', padding: '3px 8px', whiteSpace: 'nowrap' }}>
+          {params.value} {params.value === 1 ? 'API' : 'APIs'}
+        </span>
+      ),
+    },
+    {
+      headerName: 'Gross Earnings',
+      field: 'totalGrossEarningsMicroUsd',
+      width: 160,
+      minWidth: 150,
+      cellRenderer: MicroUsdCellRenderer,
+    },
+    {
+      headerName: 'Net Creator Payout',
+      field: 'totalNetEarningsMicroUsd',
+      width: 170,
+      minWidth: 160,
+      cellRenderer: (params: any) => (
+        <span style={{ color: '#34D399', fontWeight: 800, fontFamily: 'var(--font-mono)', fontSize: '0.82rem' }}>
+          {formatMicroUsd(params.value)}
+        </span>
+      ),
+    },
+    {
+      headerName: 'Actions',
+      field: 'id',
+      width: 140,
+      minWidth: 130,
+      sortable: false,
+      filter: false,
+      cellRenderer: (params: any) => {
+        const creatorId = params.value;
+        const isExpanded = expandedCreatorId === creatorId;
+        return (
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => setExpandedCreatorId(isExpanded ? null : creatorId)}
+            style={{ padding: '5px 10px', fontSize: '0.74rem', whiteSpace: 'nowrap' }}
+          >
+            {isExpanded ? 'Hide APIs' : 'View APIs'}
+          </button>
+        );
+      },
+    },
+  ];
+
+  const transactionsColumnDefs: ColDef<AdminTransaction>[] = [
+    {
+      headerName: 'Timestamp',
+      field: 'createdAt',
+      width: 175,
+      minWidth: 165,
+      cellRenderer: DateCellRenderer,
+      sort: 'desc',
+    },
+    {
+      headerName: 'API Tool Called',
+      field: 'toolName',
+      flex: 1.5,
+      minWidth: 230,
+      autoHeight: true,
+      wrapText: true,
+      cellRenderer: (params: any) => (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', justifyContent: 'center', padding: '6px 0', width: '100%' }}>
+          <div style={{ fontWeight: 700, color: '#FFFFFF', fontSize: '0.84rem', wordBreak: 'break-word', overflowWrap: 'anywhere', whiteSpace: 'normal' }}>
+            {params.value}
+          </div>
+          <div style={{ fontSize: '0.72rem', color: '#FF6C37', fontFamily: 'var(--font-mono)', wordBreak: 'break-all', overflowWrap: 'anywhere', whiteSpace: 'normal' }}>
+            {params.data?.toolSlug}
+          </div>
+        </div>
+      ),
+    },
+    {
+      headerName: 'Consumer Caller',
+      field: 'consumerName',
+      width: 190,
+      minWidth: 180,
+      autoHeight: true,
+      wrapText: true,
+      cellRenderer: (params: any) => (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', justifyContent: 'center', padding: '6px 0', width: '100%' }}>
+          <div style={{ fontWeight: 600, color: '#FFFFFF', fontSize: '0.82rem', wordBreak: 'break-word', overflowWrap: 'anywhere', whiteSpace: 'normal' }}>
+            {params.value}
+          </div>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-dark-muted)', wordBreak: 'break-all', overflowWrap: 'anywhere', whiteSpace: 'normal' }}>
+            {params.data?.consumerEmail}
+          </div>
+        </div>
+      ),
+    },
+    {
+      headerName: 'Creator',
+      field: 'creatorName',
+      width: 190,
+      minWidth: 180,
+      cellRenderer: (params: any) => (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', justifyContent: 'center' }}>
+          <div style={{ fontWeight: 600, color: '#FFFFFF', fontSize: '0.82rem' }}>{params.value}</div>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-dark-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{params.data?.creatorEmail}</div>
+        </div>
+      ),
+    },
+    {
+      headerName: 'Gross Price',
+      field: 'priceMicroUsd',
+      width: 140,
+      minWidth: 130,
+      cellRenderer: MicroUsdCellRenderer,
+    },
+    {
+      headerName: 'Creator Net',
+      field: 'creatorEarningsMicroUsd',
+      width: 140,
+      minWidth: 130,
+      cellRenderer: MicroUsdCellRenderer,
+    },
+    {
+      headerName: 'Admin Profit (Fee)',
+      field: 'platformFeeMicroUsd',
+      width: 165,
+      minWidth: 155,
+      cellRenderer: (params: any) => (
+        <span style={{ color: 'var(--brand-orange)', fontWeight: 800, fontFamily: 'var(--font-mono)', fontSize: '0.82rem' }}>
+          {formatMicroUsd(params.value)}
+        </span>
+      ),
+    },
+    {
+      headerName: 'Status',
+      field: 'status',
+      width: 135,
+      minWidth: 125,
+      cellRenderer: StatusCellRenderer,
+    },
+  ];
 
   return (
     <div className="section-dark" style={{ minHeight: '85vh', paddingTop: '40px', paddingBottom: '60px' }}>
@@ -428,213 +845,139 @@ export const AdminView: React.FC<AdminViewProps> = ({
               </div>
             </div>
 
-            {/* Sub-view A: Creators and their respective listed APIs */}
+            {/* Sub-view A: Creators and their respective listed APIs (AG GRID) */}
             {listingSubTab === 'creators' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {filteredCreators.length === 0 ? (
-                  <div className="card-dark" style={{ padding: '48px', textAlign: 'center', color: 'var(--text-dark-muted)' }}>
-                    No creators found matching &quot;{searchQuery}&quot;.
-                  </div>
-                ) : (
-                  filteredCreators.map((creator) => {
-                    const isExpanded = expandedCreatorId === creator.id;
-                    return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <DataGrid<AdminCreatorListing>
+                  rowData={filteredCreators}
+                  columnDefs={creatorsColumnDefs}
+                  title="Creator Organizations & Authors"
+                  subtitle="Registered API providers, listed endpoints count, and double-entry ledger earnings"
+                  loading={loading}
+                  emptyMessage={`No creators found matching "${searchQuery}".`}
+                  rowHeight={58}
+                  headerHeight={48}
+                  exportCsv={true}
+                  csvFileName="tooltoll-admin-creators"
+                  height="460px"
+                />
+
+                {expandedCreatorId && (() => {
+                  const creator = creators.find((c) => c.id === expandedCreatorId);
+                  if (!creator) return null;
+                  return (
+                    <div
+                      className="card-dark"
+                      style={{
+                        padding: '24px',
+                        border: '1px solid var(--brand-orange-border)',
+                        animation: 'fadeIn 0.2s ease',
+                      }}
+                    >
                       <div
-                        key={creator.id}
-                        className="card-dark"
                         style={{
-                          padding: '24px',
-                          border: '1px solid var(--border-dark)',
-                          transition: 'border-color 0.2s',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          marginBottom: '16px',
+                          flexWrap: 'wrap',
+                          gap: '12px',
                         }}
                       >
-                        {/* Creator Header Row */}
-                        <div
-                          style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'flex-start',
-                            flexWrap: 'wrap',
-                            gap: '12px',
-                            cursor: 'pointer',
-                          }}
-                          onClick={() => setExpandedCreatorId(isExpanded ? null : creator.id)}
-                        >
-                          <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#FFFFFF', margin: 0 }}>
-                                {creator.name}
-                              </h3>
-                              <span className="badge badge-orange">{creator.tools.length} APIs Listed</span>
-                            </div>
-                            <div style={{ fontSize: '0.82rem', color: 'var(--text-dark-secondary)', marginTop: '4px' }}>
-                              {creator.email} • Joined {formatDate(creator.createdAt)}
-                            </div>
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                            <div style={{ textAlign: 'right' }}>
-                              <div style={{ fontSize: '0.70rem', color: 'var(--text-dark-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
-                                Creator Revenue
-                              </div>
-                              <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--status-emerald)', fontFamily: 'var(--font-mono)' }}>
-                                {formatMicroUsd(creator.totalNetEarningsMicroUsd)}
-                              </div>
-                            </div>
-
-                            <button
-                              className="btn btn-secondary btn-sm"
-                              style={{ padding: '6px 10px', fontSize: '0.78rem' }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setExpandedCreatorId(isExpanded ? null : creator.id);
-                              }}
-                            >
-                              {isExpanded ? (
-                                <>
-                                  <ChevronUp size={14} /> Hide APIs
-                                </>
-                              ) : (
-                                <>
-                                  <ChevronDown size={14} /> View APIs ({creator.tools.length})
-                                </>
-                              )}
-                            </button>
-                          </div>
+                        <div>
+                          <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#FFFFFF', margin: 0 }}>
+                            {creator.name} — Registered API Endpoints ({creator.tools.length})
+                          </h4>
+                          <p style={{ fontSize: '0.80rem', color: 'var(--text-dark-muted)', margin: '4px 0 0' }}>
+                            {creator.email} • Joined {formatDate(creator.createdAt)}
+                          </p>
                         </div>
-
-                        {/* Creator's Respective Listed APIs (Expandable) */}
-                        {isExpanded && (
-                          <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border-dark)' }}>
-                            <div style={{ fontSize: '0.78rem', color: 'var(--text-dark-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '12px' }}>
-                              APIs Registered by {creator.name}
-                            </div>
-
-                            {creator.tools.length === 0 ? (
-                              <div style={{ fontSize: '0.84rem', color: 'var(--text-dark-muted)', fontStyle: 'italic' }}>
-                                This creator has not registered any APIs yet.
-                              </div>
-                            ) : (
-                              <div className="data-table-container">
-                                <table className="data-table">
-                                  <thead>
-                                    <tr>
-                                      <th>API Name & Slug</th>
-                                      <th>Category</th>
-                                      <th>Endpoint Target</th>
-                                      <th>Price / Call</th>
-                                      <th>Status</th>
-                                      <th>Total Calls</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {creator.tools.map((tool) => (
-                                      <tr key={tool.id}>
-                                        <td>
-                                          <div style={{ fontWeight: 700, color: '#FFFFFF' }}>{tool.name}</div>
-                                          <div style={{ fontSize: '0.74rem', color: 'var(--brand-orange)', fontFamily: 'var(--font-mono)' }}>
-                                            {tool.slug}
-                                          </div>
-                                        </td>
-                                        <td>
-                                          <span className="badge badge-dark-neutral">{tool.category}</span>
-                                        </td>
-                                        <td style={{ fontSize: '0.80rem', fontFamily: 'var(--font-mono)', color: 'var(--text-dark-muted)' }}>
-                                          <span style={{ color: 'var(--brand-orange)', fontWeight: 700 }}>{tool.httpMethod || 'POST'}</span> {tool.endpointPath || '/'}
-                                        </td>
-                                        <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#FFFFFF' }}>
-                                          {formatMicroUsd(tool.priceMicroUsd)}
-                                        </td>
-                                        <td>
-                                          <span
-                                            className={`badge ${
-                                              tool.status.toUpperCase() === 'APPROVED'
-                                                ? 'badge-emerald'
-                                                : tool.status.toUpperCase() === 'PENDING_REVIEW'
-                                                ? 'badge-orange'
-                                                : 'badge-dark-neutral'
-                                            }`}
-                                          >
-                                            {tool.status.toUpperCase()}
-                                          </span>
-                                        </td>
-                                        <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#FFFFFF' }}>
-                                          {tool.callsCount || 0}
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            )}
-                          </div>
-                        )}
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => setExpandedCreatorId(null)}
+                        >
+                          <X size={14} /> Close Inspection
+                        </button>
                       </div>
-                    );
-                  })
-                )}
+
+                      {creator.tools.length === 0 ? (
+                        <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-dark-muted)' }}>
+                          No tools registered under this creator account yet.
+                        </div>
+                      ) : (
+                        <div className="data-table-container">
+                          <table className="data-table">
+                            <thead>
+                              <tr>
+                                <th>API Tool</th>
+                                <th>Category</th>
+                                <th>Route</th>
+                                <th>Price</th>
+                                <th>Status</th>
+                                <th>Total Calls</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {creator.tools.map((tool) => (
+                                <tr key={tool.id}>
+                                  <td>
+                                    <div style={{ fontWeight: 700, color: '#FFFFFF' }}>{tool.name}</div>
+                                    <div style={{ fontSize: '0.74rem', color: 'var(--brand-orange)', fontFamily: 'var(--font-mono)' }}>
+                                      {tool.slug}
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <span className="badge badge-dark-neutral">{tool.category}</span>
+                                  </td>
+                                  <td style={{ fontSize: '0.80rem', fontFamily: 'var(--font-mono)', color: 'var(--text-dark-muted)' }}>
+                                    <span style={{ color: 'var(--brand-orange)', fontWeight: 700 }}>{tool.httpMethod || 'POST'}</span> {tool.endpointPath || '/'}
+                                  </td>
+                                  <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#FFFFFF' }}>
+                                    {formatMicroUsd(tool.priceMicroUsd)}
+                                  </td>
+                                  <td>
+                                    <span
+                                      className={`badge ${
+                                        tool.status.toUpperCase() === 'APPROVED'
+                                          ? 'badge-emerald'
+                                          : tool.status.toUpperCase() === 'PENDING_REVIEW'
+                                          ? 'badge-orange'
+                                          : 'badge-dark-neutral'
+                                      }`}
+                                    >
+                                      {tool.status.toUpperCase()}
+                                    </span>
+                                  </td>
+                                  <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#FFFFFF' }}>
+                                    {tool.callsCount || 0}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
-            {/* Sub-view B: Consumers Data and Wallets */}
+            {/* Sub-view B: Consumers Data and Wallets (AG GRID) */}
             {listingSubTab === 'consumers' && (
-              <div className="card-dark" style={{ padding: '24px' }}>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#FFFFFF', marginBottom: '16px' }}>
-                  Registered Consumers & Wallets ({filteredConsumers.length})
-                </h3>
-
-                {filteredConsumers.length === 0 ? (
-                  <div style={{ padding: '36px', textAlign: 'center', color: 'var(--text-dark-muted)' }}>
-                    No consumers found matching &quot;{searchQuery}&quot;.
-                  </div>
-                ) : (
-                  <div className="data-table-container">
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th>Consumer</th>
-                          <th>Joined</th>
-                          <th>Wallet Balance</th>
-                          <th>Reserved Mutex</th>
-                          <th>Active Agents</th>
-                          <th>Total Calls</th>
-                          <th>Total Spent</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredConsumers.map((c) => (
-                          <tr key={c.id}>
-                            <td>
-                              <div style={{ fontWeight: 700, color: '#FFFFFF' }}>{c.name}</div>
-                              <div style={{ fontSize: '0.78rem', color: 'var(--text-dark-muted)' }}>{c.email}</div>
-                            </td>
-                            <td style={{ fontSize: '0.80rem', color: 'var(--text-dark-muted)' }}>
-                              {formatDate(c.createdAt)}
-                            </td>
-                            <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--status-emerald)' }}>
-                              {formatMicroUsd(c.walletBalanceMicroUsd)}
-                            </td>
-                            <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem', color: 'var(--text-dark-muted)' }}>
-                              {formatMicroUsd(c.walletReservedMicroUsd)}
-                            </td>
-                            <td>
-                              <span className="badge badge-dark-neutral">
-                                {c.agentsCount} {c.agentsCount === 1 ? 'Agent' : 'Agents'}
-                              </span>
-                            </td>
-                            <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#FFFFFF' }}>
-                              {c.totalCallsCount}
-                            </td>
-                            <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#38BDF8' }}>
-                              {formatMicroUsd(c.totalSpentMicroUsd)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+              <DataGrid<AdminConsumerListing>
+                rowData={filteredConsumers}
+                columnDefs={consumersColumnDefs}
+                title="Registered Consumers & Wallets"
+                subtitle="Active client agents, micro-USD wallet balances, and lifetime API consumption"
+                loading={loading}
+                emptyMessage={`No consumers found matching "${searchQuery}".`}
+                rowHeight={58}
+                headerHeight={48}
+                exportCsv={true}
+                csvFileName="tooltoll-admin-consumers"
+                height="480px"
+              />
             )}
           </div>
         )}
@@ -643,116 +986,19 @@ export const AdminView: React.FC<AdminViewProps> = ({
         {/* 2) TAB: MODERATION QUEUE                                  */}
         {/* ========================================================= */}
         {activeTab === 'moderation' && (
-          <div className="card-dark" style={{ padding: '28px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-              <div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#FFFFFF', margin: 0 }}>
-                  API Moderation & Review Queue
-                </h3>
-                <p style={{ color: 'var(--text-dark-secondary)', fontSize: '0.85rem', marginTop: '4px', margin: 0 }}>
-                  Verify security, rate limits, schema integrity, and approve creator APIs for marketplace publishing.
-                </p>
-              </div>
-              <span className="badge badge-orange">{pendingTools.length} Awaiting Approval</span>
-            </div>
-
-            {pendingTools.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '64px 0', color: 'var(--text-dark-muted)' }}>
-                <CheckCircle size={44} color="var(--status-emerald)" style={{ margin: '0 auto 16px' }} />
-                <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#FFFFFF' }}>Moderation queue is clear!</div>
-                <div style={{ fontSize: '0.86rem', marginTop: '4px' }}>
-                  All creator tool submissions have been thoroughly evaluated and approved.
-                </div>
-              </div>
-            ) : (
-              <div className="data-table-container">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>API Name & Slug</th>
-                      <th>Category</th>
-                      <th>Creator</th>
-                      <th>Base & Path</th>
-                      <th>Price / Call</th>
-                      <th>Verification</th>
-                      <th style={{ textAlign: 'right' }}>Moderator Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pendingTools.map((tool) => (
-                      <tr key={tool.id}>
-                        <td>
-                          <div style={{ fontWeight: 700, color: '#FFFFFF' }}>{tool.name}</div>
-                          <div style={{ fontSize: '0.74rem', color: 'var(--brand-orange)', fontFamily: 'var(--font-mono)' }}>
-                            {tool.slug}
-                          </div>
-                          {tool.description && (
-                            <div style={{ fontSize: '0.74rem', color: 'var(--text-dark-muted)', maxWidth: '280px', marginTop: '3px' }} className="truncate">
-                              {tool.description}
-                            </div>
-                          )}
-                        </td>
-                        <td>
-                          <span className="badge badge-dark-neutral">{tool.category}</span>
-                        </td>
-                        <td style={{ fontSize: '0.85rem' }}>
-                          <div style={{ fontWeight: 600, color: '#FFFFFF' }}>{tool.creator?.name || 'Verified Creator'}</div>
-                          <div style={{ fontSize: '0.74rem', color: 'var(--text-dark-muted)' }}>{tool.creator?.email || ''}</div>
-                        </td>
-                        <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.76rem', color: 'var(--text-dark-muted)' }}>
-                          <span style={{ color: 'var(--brand-orange)', fontWeight: 700 }}>{tool.httpMethod || 'POST'}</span> {tool.endpointPath || '/'}
-                        </td>
-                        <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#FFFFFF' }}>
-                          {formatMicroUsd(tool.priceMicroUsd)}
-                        </td>
-                        <td>
-                          <span className="badge badge-emerald">Verified (Passed)</span>
-                        </td>
-                        <td style={{ textAlign: 'right' }}>
-                          <div style={{ display: 'inline-flex', gap: '8px' }}>
-                            <button
-                              className="btn btn-sm"
-                              style={{
-                                background: 'var(--status-emerald-bg)',
-                                color: '#34D399',
-                                border: '1px solid var(--status-emerald-border)',
-                                fontWeight: 700,
-                              }}
-                              onClick={() => {
-                                setSelectedTool(tool);
-                                setActionType('approve');
-                                setModerationReason('Endpoint verified; schema matches output parameters and passed test call');
-                              }}
-                            >
-                              <CheckCircle size={13} />
-                              Approve
-                            </button>
-                            <button
-                              className="btn btn-sm"
-                              style={{
-                                background: 'var(--status-rose-bg)',
-                                color: '#F87171',
-                                border: '1px solid var(--status-rose-border)',
-                                fontWeight: 700,
-                              }}
-                              onClick={() => {
-                                setSelectedTool(tool);
-                                setActionType('reject');
-                                setModerationReason('Does not meet platform quality guidelines or endpoint is unresponsive');
-                              }}
-                            >
-                              <XCircle size={13} />
-                              Reject
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+          <DataGrid<Tool>
+            rowData={pendingTools}
+            columnDefs={moderationColumnDefs}
+            title="API Moderation & Review Queue"
+            subtitle="Verify security, rate limits, schema integrity, and approve creator APIs for marketplace publishing"
+            loading={loading}
+            emptyMessage="Moderation queue is clear! All creator tool submissions have been thoroughly evaluated and approved."
+            rowHeight={64}
+            headerHeight={48}
+            exportCsv={true}
+            csvFileName="tooltoll-moderation-queue"
+            height="500px"
+          />
         )}
 
         {/* ========================================================= */}
@@ -928,106 +1174,20 @@ export const AdminView: React.FC<AdminViewProps> = ({
               </form>
             </div>
 
-            {/* API Call Transaction History requested by user */}
-            <div className="card-dark" style={{ padding: '28px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-                <div>
-                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#FFFFFF', margin: 0 }}>
-                    API Execution & Admin Profit Ledger
-                  </h3>
-                  <p style={{ color: 'var(--text-dark-secondary)', fontSize: '0.85rem', marginTop: '4px', margin: 0 }}>
-                    Every API execution showing which tool was called and exact platform fee profit captured.
-                  </p>
-                </div>
-
-                <div style={{ position: 'relative', width: '100%', maxWidth: '280px' }}>
-                  <Search
-                    size={14}
-                    style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dark-muted)' }}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Search by API, creator, caller..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="form-input"
-                    style={{ paddingLeft: '32px', height: '34px', fontSize: '0.80rem' }}
-                  />
-                </div>
-              </div>
-
-              {filteredTransactions.length === 0 ? (
-                <div style={{ padding: '48px 0', textAlign: 'center', color: 'var(--text-dark-muted)' }}>
-                  No transaction history recorded yet.
-                </div>
-              ) : (
-                <div className="data-table-container">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Timestamp</th>
-                        <th>API Tool Called</th>
-                        <th>Caller (Consumer)</th>
-                        <th>Creator</th>
-                        <th>Gross Price</th>
-                        <th>Creator Net</th>
-                        <th>Admin Profit (Fee)</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredTransactions.map((tx) => (
-                        <tr key={tx.id}>
-                          <td style={{ fontSize: '0.78rem', color: 'var(--text-dark-muted)', whiteSpace: 'nowrap' }}>
-                            {formatDate(tx.createdAt)}
-                          </td>
-                          <td>
-                            <div style={{ fontWeight: 700, color: '#FFFFFF' }}>{tx.toolName}</div>
-                            <div style={{ fontSize: '0.72rem', color: 'var(--brand-orange)', fontFamily: 'var(--font-mono)' }}>
-                              {tx.toolSlug}
-                            </div>
-                          </td>
-                          <td>
-                            <div style={{ fontWeight: 600, color: '#FFFFFF', fontSize: '0.82rem' }}>{tx.consumerName}</div>
-                            <div style={{ fontSize: '0.72rem', color: 'var(--text-dark-muted)' }}>
-                              Agent: {tx.agentName}
-                            </div>
-                          </td>
-                          <td style={{ fontSize: '0.82rem', color: 'var(--text-dark-secondary)' }}>
-                            {tx.creatorName}
-                          </td>
-                          <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#FFFFFF' }}>
-                            {formatMicroUsd(tx.priceMicroUsd)}
-                          </td>
-                          <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem', color: '#94A3B8' }}>
-                            {formatMicroUsd(tx.creatorEarningsMicroUsd)}
-                          </td>
-                          <td>
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: 'var(--status-emerald)' }}>
-                                +{formatMicroUsd(tx.platformFeeMicroUsd)}
-                              </span>
-                              <span className="badge badge-emerald" style={{ fontSize: '0.62rem', padding: '1px 5px' }}>
-                                Profit
-                              </span>
-                            </div>
-                          </td>
-                          <td>
-                            <span
-                              className={`badge ${
-                                tx.status.toUpperCase() === 'SUCCESS' ? 'badge-emerald' : 'badge-rose'
-                              }`}
-                            >
-                              {tx.status.toUpperCase()}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+            {/* API Call Transaction History requested by user (AG GRID) */}
+            <DataGrid<AdminTransaction>
+              rowData={filteredTransactions}
+              columnDefs={transactionsColumnDefs}
+              title="API Execution & Admin Profit Ledger"
+              subtitle="Every API execution showing which tool was called and exact platform fee profit captured"
+              loading={loading}
+              emptyMessage="No transaction history recorded yet."
+              rowHeight={58}
+              headerHeight={48}
+              exportCsv={true}
+              csvFileName="tooltoll-platform-transactions"
+              height="500px"
+            />
           </div>
         )}
 
