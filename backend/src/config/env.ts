@@ -15,10 +15,11 @@ const envSchema = z.object({
   CREDENTIAL_ENCRYPTION_KEY_VERSION: z.string().default('v1'),
   LLM_PROVIDER: z.enum(['mock', 'openai', 'anthropic']).default('mock'),
   LLM_API_KEY: z.string().default('mock-key'),
-  PAYMENT_ADAPTER: z.enum(['mock', 'paypal']).default('mock'),
+  PAYMENT_ADAPTER: z.enum(['mock', 'paypal']).default('paypal'),
   PAYOUT_ADAPTER: z.enum(['mock', 'paypal']).default('mock'),
-  PAYPAL_CLIENT_ID: z.string().default('mock_client_id'),
-  PAYPAL_CLIENT_SECRET: z.string().default('mock_client_secret'),
+  PAYPAL_MODE: z.enum(['sandbox', 'live']).default('sandbox'),
+  PAYPAL_CLIENT_ID: z.string().default('BAAIGOYpEjdTq_Apj8LUwg8RiSuee7b4OYI8YphoTSC6-akCYQS6KaegDredt6LpK6-Pwa-sAcS600seuE'),
+  PAYPAL_CLIENT_SECRET: z.string().default('EKif8ssx3Zbeq-Z7mSvuU4Ad6ZAGzIzlmUaRzIgIVM3apKMJntc0k_P_0u87zTLn4r_i-Kz0cgRsusH2'),
   PAYPAL_BASE_URL: z.string().default('https://api-m.sandbox.paypal.com'),
   PAYPAL_WEBHOOK_ID: z.string().default('mock_webhook_id'),
   PLATFORM_FEE_BPS: z.string().transform((val) => parseInt(val, 10)).default('1000'),
@@ -38,12 +39,18 @@ const parseEnv = () => {
       throw new Error('Refusing to boot in production with invalid environment variables');
     }
   }
-  return parsed.success ? parsed.data : envSchema.parse({
+  const data = parsed.success ? parsed.data : envSchema.parse({
     ...process.env,
     DATABASE_URL: process.env.DATABASE_URL || 'postgresql://tooltoll:tooltoll@localhost:5432/tooltoll_db?schema=public',
     AUTH_SECRET_KEY: process.env.AUTH_SECRET_KEY || 'super-secret-jwt-signing-key-tooltoll-mvp-32chars-min',
     CREDENTIAL_ENCRYPTION_KEY: process.env.CREDENTIAL_ENCRYPTION_KEY || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
   });
+
+  if (data.PAYPAL_MODE === 'live' && !process.env.PAYPAL_BASE_URL) {
+    data.PAYPAL_BASE_URL = 'https://api-m.paypal.com';
+  }
+
+  return data;
 };
 
 export const env = parseEnv();

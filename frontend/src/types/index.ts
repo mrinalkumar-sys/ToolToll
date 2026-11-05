@@ -491,3 +491,48 @@ export interface ToolTestHistoryItem {
   assertions: PostmanAssertionResult[];
   createdAt: string;
 }
+
+// PayPal Sandbox Checkout types
+export interface PayPalConfig {
+  clientId: string;
+  mode: 'sandbox' | 'live';
+  currency: string;
+}
+
+export interface PayPalOrderResponse {
+  id: string;
+  orderId: string;
+  approvalUrl: string;
+  amount: string;
+  currency: string;
+  status: 'CREATED' | 'APPROVED' | 'COMPLETED' | 'CANCELLED' | 'FAILED';
+  customerId?: string;
+  createdAt?: string;
+}
+
+export interface PayPalCaptureResponse {
+  id: string;
+  orderId: string;
+  captureId?: string;
+  topupId?: string;
+  status: 'COMPLETED' | 'FAILED' | 'PENDING';
+  amount: string;
+  amountMicroUsd?: string;
+  currency: string;
+  message: string;
+}
+
+export interface PayPalOrderDetails {
+  id: string;
+  orderId: string;
+  captureId?: string | null;
+  amount: string;
+  amountMicroUsd: string;
+  currency: string;
+  status: string;
+  paypalStatus: string;
+  customerId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+

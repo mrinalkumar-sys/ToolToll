@@ -57,6 +57,34 @@ export const WalletView: React.FC<WalletViewProps> = ({ onOpenTopup }) => {
 
   useEffect(() => {
     loadData();
+  }, [wallet?.balance]);
+
+  // Handle PayPal return redirects (from popup or direct redirect)
+  useEffect(() => {
+    const search = window.location.search;
+    if (!search) return;
+    const params = new URLSearchParams(search);
+    const status = params.get('status');
+    const token = params.get('token');
+
+    if (status === 'paypal_success' && token) {
+      if (window.opener) {
+        try {
+          window.opener.postMessage({ type: 'PAYPAL_ORDER_APPROVED', orderId: token }, '*');
+          window.close();
+          return;
+        } catch {
+          // Fall through to capture locally if cross-window postMessage fails
+        }
+      }
+
+      api.capturePaypalOrder(token)
+        .then(() => refreshWallet())
+        .catch((err) => console.error('Auto-capture error from return URL:', err))
+        .finally(() => {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        });
+    }
   }, []);
 
   // AG Grid column definitions for Double-Entry Ledger
@@ -297,8 +325,8 @@ export const WalletView: React.FC<WalletViewProps> = ({ onOpenTopup }) => {
           </div>
 
           <button className="btn btn-primary btn-lg" onClick={onOpenTopup}>
-            <Plus size={16} strokeWidth={3} />
-            Add Funds to Wallet
+            <CreditCard size={18} strokeWidth={2.5} />
+            PayPal Sandbox Top-Up
           </button>
         </div>
 
@@ -353,7 +381,7 @@ export const WalletView: React.FC<WalletViewProps> = ({ onOpenTopup }) => {
             <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
               <button className="btn btn-outline-orange btn-sm" style={{ flex: 1 }} onClick={onOpenTopup}>
                 <CreditCard size={14} />
-                Open Top-up
+                PayPal Sandbox Checkout
               </button>
               <button
                 className="btn btn-secondary btn-sm"

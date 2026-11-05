@@ -24,6 +24,10 @@ import {
   SdkGenerationResult,
   PostmanTestReport,
   ToolTestHistoryItem,
+  PayPalConfig,
+  PayPalOrderResponse,
+  PayPalCaptureResponse,
+  PayPalOrderDetails,
 } from '../types';
 
 const API_BASE = '/api';
@@ -1046,37 +1050,52 @@ class ApiService {
     }
   }
 
-  async createPaypalOrder(amountUsd: string): Promise<{ orderId: string; approvalUrl: string }> {
+  // --- PayPal Sandbox Payment Gateway Methods ---
+
+  async getPayPalConfig(): Promise<PayPalConfig> {
     try {
-      const res = await this.request<any>('/paypal/orders', {
-        method: 'POST',
-        body: JSON.stringify({ amountUsd }),
-      });
-      return {
-        orderId: res.orderId,
-        approvalUrl: res.approvalUrl || `https://www.sandbox.paypal.com/checkoutnow?token=${res.orderId}`,
-      };
+      const res = await this.request<PayPalConfig>('/paypal/config');
+      return res;
     } catch {
-      const orderId = `PAYPAL_SIM_${Date.now()}`;
       return {
-        orderId,
-        approvalUrl: `https://www.sandbox.paypal.com/checkoutnow?token=${orderId}`,
+        clientId: 'BAAIGOYpEjdTq_Apj8LUwg8RiSuee7b4OYI8YphoTSC6-akCYQS6KaegDredt6LpK6-Pwa-sAcS600seuE',
+        mode: 'sandbox',
+        currency: 'USD',
       };
     }
   }
 
-  async capturePaypalOrder(orderId: string): Promise<{ wallet: Wallet; status: string }> {
-    try {
-      const res = await this.request<any>(`/paypal/orders/${orderId}/capture`, { method: 'POST' });
-      const wallet = await this.getWallet();
-      return {
-        wallet,
-        status: res.status || 'COMPLETED',
-      };
-    } catch {
-      const wallet = await this.getWallet();
-      return { wallet, status: 'COMPLETED' };
-    }
+  async createPaypalOrder(
+    amount: number | string,
+    packageId?: string
+  ): Promise<PayPalOrderResponse> {
+    const numAmount = typeof amount === 'number' ? amount.toFixed(2) : amount;
+    const res = await this.request<PayPalOrderResponse>('/paypal/create-order', {
+      method: 'POST',
+      body: JSON.stringify({ amount: numAmount, packageId }),
+    });
+    return res;
+  }
+
+  async capturePaypalOrder(orderId: string): Promise<PayPalCaptureResponse> {
+    const res = await this.request<PayPalCaptureResponse>('/paypal/capture-order', {
+      method: 'POST',
+      body: JSON.stringify({ orderId }),
+    });
+    return res;
+  }
+
+  async getPaypalOrder(orderId: string): Promise<PayPalOrderDetails> {
+    const res = await this.request<PayPalOrderDetails>(`/paypal/order/${encodeURIComponent(orderId)}`);
+    return res;
+  }
+
+  async cancelPaypalOrder(orderId: string): Promise<{ orderId: string; status: string; message: string }> {
+    const res = await this.request<{ orderId: string; status: string; message: string }>('/paypal/cancel-order', {
+      method: 'POST',
+      body: JSON.stringify({ orderId }),
+    });
+    return res;
   }
 
   // --- Consumer Calls & Refunds ---

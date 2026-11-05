@@ -340,10 +340,11 @@ model PaypalOrder {
   userId         String
   walletId       String
   orderId        String   @unique
+  captureId      String?
   amountUsd      String
   amountMicroUsd BigInt
   currency       String   @default("USD")
-  status         String   // CREATED, APPROVED, COMPLETED, FAILED
+  status         String   // CREATED, APPROVED, COMPLETED, FAILED, CANCELLED
   rawCapture     Json?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt

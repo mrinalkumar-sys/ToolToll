@@ -4,25 +4,177 @@ import { prisma } from '../../lib/prisma';
 import { requireAuth } from '../../middleware/auth';
 import { LedgerService } from '../ledger/ledgerService';
 import { sendSuccess, sendError } from '../../utils/response';
-import { BadRequestError, NotFoundError } from '../../utils/errors';
+import { BadRequestError, NotFoundError, ForbiddenError } from '../../utils/errors';
 import { dollarsToMicroUsd } from '../../utils/money';
 import { env } from '../../config/env';
 
 export const paypalRouter = Router();
 
+// ==========================================
+// PayPal Authentication & Helpers
+// ==========================================
+
+let tokenCache: { token: string; expiresAt: number } | null = null;
+let tokenPromise: Promise<string> | null = null;
+
+function getPayPalBaseUrl(): string {
+  if (env.PAYPAL_BASE_URL && env.PAYPAL_BASE_URL.startsWith('http')) {
+    return env.PAYPAL_BASE_URL.replace(/\/+$/, '');
+  }
+  return env.PAYPAL_MODE === 'live'
+    ? 'https://api-m.paypal.com'
+    : 'https://api-m.sandbox.paypal.com';
+}
+
+async function getPayPalAccessToken(): Promise<string> {
+  const now = Date.now();
+  if (tokenCache && tokenCache.expiresAt > now + 60000) {
+    return tokenCache.token;
+  }
+
+  // Deduplicate concurrent token requests
+  if (tokenPromise) {
+    return await tokenPromise;
+  }
+
+  const clientId = env.PAYPAL_CLIENT_ID;
+  const clientSecret = env.PAYPAL_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret || clientId === 'mock_client_id') {
+    throw new BadRequestError('PayPal API credentials are not configured on server');
+  }
+
+  tokenPromise = (async () => {
+    try {
+      const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+      const baseUrl = getPayPalBaseUrl();
+
+      const res = await fetch(`${baseUrl}/v1/oauth2/token`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${auth}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'grant_type=client_credentials',
+      });
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        console.error('PayPal OAuth Error:', res.status, errText);
+        throw new BadRequestError('Failed to authenticate with PayPal Sandbox gateway');
+      }
+
+      const data = (await res.json()) as { access_token: string; expires_in: number };
+      tokenCache = {
+        token: data.access_token,
+        expiresAt: Date.now() + (data.expires_in || 3600) * 1000,
+      };
+
+      return data.access_token;
+    } finally {
+      tokenPromise = null;
+    }
+  })();
+
+  return await tokenPromise;
+}
+
+// Pre-warm OAuth token at startup & auto-refresh before expiration
+async function prewarmPayPalToken(): Promise<void> {
+  try {
+    const clientId = env.PAYPAL_CLIENT_ID;
+    const clientSecret = env.PAYPAL_CLIENT_SECRET;
+    if (clientId && clientSecret && clientId !== 'mock_client_id') {
+      await getPayPalAccessToken();
+      console.log('⚡ [PayPal Gateway] Sandbox OAuth token pre-warmed & cached in memory');
+    }
+  } catch (err: any) {
+    console.warn('⚠️ [PayPal Gateway] Pre-warming token failed:', err?.message || err);
+  }
+}
+
+// Fire startup pre-warm
+setTimeout(() => {
+  prewarmPayPalToken().catch(() => {});
+}, 100);
+
+// Keep token warm periodically (every 25 minutes)
+setInterval(() => {
+  prewarmPayPalToken().catch(() => {});
+}, 25 * 60 * 1000);
+
+// Validation schemas
 const createOrderSchema = z.object({
-  amountUsd: z.string().or(z.number()).refine((val) => {
-    const n = typeof val === 'number' ? val : parseFloat(String(val).trim());
-    return !isNaN(n) && isFinite(n) && n >= 1.0 && n <= 10000.0;
-  }, { message: 'amountUsd must be a valid positive amount between $1.00 and $10,000.00' }),
+  amount: z.union([z.string(), z.number()]).optional(),
+  amountUsd: z.union([z.string(), z.number()]).optional(),
+  packageId: z.string().optional(),
+  currency: z.string().default('USD'),
+}).refine((data) => data.amount !== undefined || data.amountUsd !== undefined || data.packageId !== undefined, {
+  message: 'Amount or packageId is required',
 });
 
-// POST /api/paypal/orders
-paypalRouter.post('/orders', requireAuth, async (req: Request, res: Response, next) => {
+const captureOrderSchema = z.object({
+  orderId: z.string().min(1, 'orderId is required'),
+});
+
+// Helper to validate and calculate server-side amount
+function validateAndGetAmount(input: {
+  amount?: string | number;
+  amountUsd?: string | number;
+  packageId?: string;
+}): { amountUsdStr: string; amountMicroUsd: bigint } {
+  // Predefined packages support
+  const packageMap: Record<string, number> = {
+    starter: 5.0,
+    standard: 10.0,
+    pro: 25.0,
+    enterprise: 50.0,
+  };
+
+  let numVal: number;
+  if (input.packageId && packageMap[input.packageId.toLowerCase()]) {
+    numVal = packageMap[input.packageId.toLowerCase()];
+  } else {
+    const rawVal = input.amountUsd !== undefined ? input.amountUsd : input.amount;
+    numVal = typeof rawVal === 'number' ? rawVal : parseFloat(String(rawVal).trim());
+  }
+
+  if (isNaN(numVal) || !isFinite(numVal) || numVal < 1.0 || numVal > 10000.0) {
+    throw new BadRequestError('Payment amount must be between $1.00 and $10,000.00 USD');
+  }
+
+  const amountUsdStr = numVal.toFixed(2);
+  const amountMicroUsd = dollarsToMicroUsd(amountUsdStr);
+  return { amountUsdStr, amountMicroUsd };
+}
+
+// ==========================================
+// 1. GET /api/paypal/config
+// Return public client configuration without secrets
+// ==========================================
+paypalRouter.get('/config', (_req: Request, res: Response) => {
+  return sendSuccess(res, {
+    clientId: env.PAYPAL_CLIENT_ID,
+    mode: env.PAYPAL_MODE,
+    currency: 'USD',
+  });
+});
+
+// ==========================================
+// 2. POST /api/paypal/create-order
+// Create PayPal Sandbox Order with server-side validation
+// ==========================================
+async function handleCreateOrder(req: Request, res: Response, next: any) {
   try {
     const parsed = createOrderSchema.safeParse(req.body);
     if (!parsed.success) {
-      return sendError(res, parsed.error.errors[0]?.message || 'Invalid amountUsd', 400, 'VALIDATION_ERROR', parsed.error.format());
+      return sendError(
+        res,
+        parsed.error.errors[0]?.message || 'Invalid order parameters',
+        400,
+        'VALIDATION_ERROR',
+        parsed.error.format()
+      );
     }
 
     const userId = req.user!.userId;
@@ -32,64 +184,83 @@ paypalRouter.post('/orders', requireAuth, async (req: Request, res: Response, ne
     });
 
     if (!user || !user.wallet) {
-      throw new NotFoundError('User or wallet not found');
+      throw new NotFoundError('Customer user or wallet record not found');
     }
 
-    const numVal = typeof parsed.data.amountUsd === 'number' ? parsed.data.amountUsd : parseFloat(parsed.data.amountUsd);
-    const amountUsdStr = numVal.toFixed(2);
-    const amountMicroUsd = dollarsToMicroUsd(amountUsdStr);
+    const { amountUsdStr, amountMicroUsd } = validateAndGetAmount(parsed.data);
+    const baseUrl = getPayPalBaseUrl();
+    const token = await getPayPalAccessToken();
 
-    let orderId: string;
+    const frontendOrigin = env.FRONTEND_URL || 'http://localhost:5174';
 
-    if (env.PAYMENT_ADAPTER === 'paypal' && env.PAYPAL_CLIENT_ID !== 'mock_client_id') {
-      // Real PayPal Sandbox Order Creation
-      const auth = Buffer.from(`${env.PAYPAL_CLIENT_ID}:${env.PAYPAL_CLIENT_SECRET}`).toString('base64');
-      const tokenRes = await fetch(`${env.PAYPAL_BASE_URL}/v1/oauth2/token`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Basic ${auth}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: 'grant_type=client_credentials',
-      });
-
-      if (!tokenRes.ok) {
-        throw new BadRequestError('Failed to authenticate with PayPal API');
-      }
-
-      const tokenData = (await tokenRes.json()) as { access_token: string };
-
-      const orderRes = await fetch(`${env.PAYPAL_BASE_URL}/v2/checkout/orders`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${tokenData.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          intent: 'CAPTURE',
-          purchase_units: [
-            {
-              amount: {
+    // Call PayPal Orders v2 API
+    const orderPayload = {
+      intent: 'CAPTURE',
+      purchase_units: [
+        {
+          reference_id: `pu_${Date.now()}`,
+          description: `ToolToll Micro-USD Credit Deposit: $${amountUsdStr} USD`,
+          custom_id: user.wallet.id,
+          amount: {
+            currency_code: 'USD',
+            value: amountUsdStr,
+            breakdown: {
+              item_total: {
                 currency_code: 'USD',
                 value: amountUsdStr,
               },
-              custom_id: user.wallet.id,
+            },
+          },
+          items: [
+            {
+              name: 'ToolToll Machine Economy Credits',
+              description: `${(parseFloat(amountUsdStr) * 1000000).toLocaleString()} Micro-USD Platform Balance`,
+              unit_amount: {
+                currency_code: 'USD',
+                value: amountUsdStr,
+              },
+              quantity: '1',
+              category: 'DIGITAL_GOODS',
             },
           ],
-        }),
-      });
+        },
+      ],
+      application_context: {
+        brand_name: 'ToolToll Protocol',
+        landing_page: 'LOGIN',
+        shipping_preference: 'NO_SHIPPING',
+        user_action: 'PAY_NOW',
+        return_url: `${frontendOrigin}/wallet?status=paypal_success`,
+        cancel_url: `${frontendOrigin}/wallet?status=paypal_cancelled`,
+      },
+    };
 
-      if (!orderRes.ok) {
-        throw new BadRequestError('Failed to create order on PayPal');
-      }
+    const ppRes = await fetch(`${baseUrl}/v2/checkout/orders`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(orderPayload),
+    });
 
-      const orderData = (await orderRes.json()) as { id: string };
-      orderId = orderData.id;
-    } else {
-      // Mock PayPal adapter for dev and testing
-      orderId = `MOCK_ORDER_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    if (!ppRes.ok) {
+      const errDetails = await ppRes.text().catch(() => '');
+      console.error('PayPal Order Create Failed:', ppRes.status, errDetails);
+      throw new BadRequestError('Failed to create order on PayPal Sandbox gateway');
     }
 
+    const ppOrder = (await ppRes.json()) as {
+      id: string;
+      status: string;
+      links?: Array<{ href: string; rel: string; method: string }>;
+    };
+
+    const orderId = ppOrder.id;
+    const approvalLink = ppOrder.links?.find((l) => l.rel === 'approve');
+    const approvalUrl = approvalLink?.href || `https://www.sandbox.paypal.com/checkoutnow?token=${orderId}`;
+
+    // Save order in database
     const orderRecord = await prisma.paypalOrder.create({
       data: {
         userId,
@@ -103,77 +274,123 @@ paypalRouter.post('/orders', requireAuth, async (req: Request, res: Response, ne
     });
 
     return sendSuccess(res, {
+      id: orderRecord.id,
       orderId: orderRecord.orderId,
-      amountUsd: orderRecord.amountUsd,
+      approvalUrl,
+      amount: orderRecord.amountUsd,
+      currency: orderRecord.currency,
       status: orderRecord.status,
-      adapter: env.PAYMENT_ADAPTER,
+      customerId: orderRecord.userId,
+      createdAt: orderRecord.createdAt,
     });
   } catch (error) {
     next(error);
   }
-});
+}
 
-// POST /api/paypal/orders/:orderId/capture
-paypalRouter.post('/orders/:orderId/capture', requireAuth, async (req: Request, res: Response, next) => {
+paypalRouter.post('/create-order', requireAuth, handleCreateOrder);
+paypalRouter.post('/orders', requireAuth, handleCreateOrder); // Legacy alias
+
+// ==========================================
+// 3. POST /api/paypal/capture-order
+// Capture authorized PayPal payment & credit customer wallet atomically
+// ==========================================
+async function handleCaptureOrder(req: Request, res: Response, next: any) {
   try {
-    const { orderId } = req.params;
+    const rawOrderId = req.body?.orderId || req.params?.orderId;
+    const parsed = captureOrderSchema.safeParse({ orderId: rawOrderId });
+
+    if (!parsed.success) {
+      return sendError(res, 'Valid orderId is required for payment capture', 400, 'VALIDATION_ERROR');
+    }
+
+    const { orderId } = parsed.data;
     const userId = req.user!.userId;
 
     const order = await prisma.paypalOrder.findUnique({
       where: { orderId },
     });
 
-    if (!order || order.userId !== userId) {
-      throw new NotFoundError('Order not found or unauthorized');
+    if (!order) {
+      throw new NotFoundError(`Order ${orderId} not found in database`);
     }
 
+    if (order.userId !== userId && !req.user!.isAdmin) {
+      throw new ForbiddenError('You do not have permission to capture this order');
+    }
+
+    // Idempotency: Prevent duplicate payment captures
     if (order.status === 'COMPLETED') {
-      return sendSuccess(res, { orderId, status: 'COMPLETED', message: 'Order already captured' });
+      return sendSuccess(res, {
+        id: order.id,
+        orderId: order.orderId,
+        captureId: order.captureId || 'ALREADY_CAPTURED',
+        status: 'COMPLETED',
+        amount: order.amountUsd,
+        currency: order.currency,
+        message: 'Order was already captured and credited successfully',
+      });
     }
 
-    if (order.status !== 'CREATED') {
-      throw new BadRequestError(`Order in ${order.status} state cannot be captured`);
+    if (order.status === 'CANCELLED') {
+      throw new BadRequestError('Cannot capture a cancelled payment order');
     }
 
-    let captureData: unknown = { simulated: true };
+    const baseUrl = getPayPalBaseUrl();
+    const token = await getPayPalAccessToken();
 
-    if (env.PAYMENT_ADAPTER === 'paypal' && env.PAYPAL_CLIENT_ID !== 'mock_client_id') {
-      const auth = Buffer.from(`${env.PAYPAL_CLIENT_ID}:${env.PAYPAL_CLIENT_SECRET}`).toString('base64');
-      const tokenRes = await fetch(`${env.PAYPAL_BASE_URL}/v1/oauth2/token`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Basic ${auth}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: 'grant_type=client_credentials',
-      });
+    const capRes = await fetch(`${baseUrl}/v2/checkout/orders/${orderId}/capture`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
 
-      if (!tokenRes.ok) {
-        throw new BadRequestError('Failed to authenticate with PayPal API');
+    let captureData: any = null;
+
+    if (!capRes.ok) {
+      const errJson: any = await capRes.json().catch(() => ({}));
+      console.warn('PayPal Capture API returned non-200:', capRes.status, errJson);
+
+      // Check if order was already captured on PayPal
+      if (errJson?.name === 'ORDER_ALREADY_CAPTURED' || errJson?.details?.some((d: any) => d.issue === 'ORDER_ALREADY_CAPTURED')) {
+        // Retrieve order details to extract existing capture ID
+        const getRes = await fetch(`${baseUrl}/v2/checkout/orders/${orderId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (getRes.ok) {
+          captureData = await getRes.json();
+        }
+      } else {
+        throw new BadRequestError(errJson?.message || 'PayPal capture failed');
       }
-
-      const tokenData = (await tokenRes.json()) as { access_token: string };
-
-      const capRes = await fetch(`${env.PAYPAL_BASE_URL}/v2/checkout/orders/${orderId}/capture`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${tokenData.access_token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!capRes.ok) {
-        throw new BadRequestError('Failed to capture order on PayPal');
-      }
-
+    } else {
       captureData = await capRes.json();
     }
 
-    // Update order status atomically
-    await prisma.paypalOrder.update({
+    // Extract transaction/capture ID
+    const captureUnit = captureData?.purchase_units?.[0]?.payments?.captures?.[0];
+    const captureId: string = captureUnit?.id || captureData?.id || `cap_${Date.now()}`;
+    const captureStatus: string = captureUnit?.status || captureData?.status || 'COMPLETED';
+
+    if (captureStatus !== 'COMPLETED' && captureStatus !== 'PENDING') {
+      await prisma.paypalOrder.update({
+        where: { id: order.id },
+        data: {
+          status: 'FAILED',
+          rawCapture: captureData as object,
+        },
+      });
+      throw new BadRequestError(`PayPal capture status is ${captureStatus}`);
+    }
+
+    // Update PaypalOrder in database with capture ID and status
+    const updatedOrder = await prisma.paypalOrder.update({
       where: { id: order.id },
       data: {
         status: 'COMPLETED',
+        captureId,
         rawCapture: captureData as object,
       },
     });
@@ -187,18 +404,140 @@ paypalRouter.post('/orders/:orderId/capture', requireAuth, async (req: Request, 
     });
 
     return sendSuccess(res, {
-      orderId,
-      status: 'COMPLETED',
+      id: updatedOrder.id,
+      orderId: updatedOrder.orderId,
+      captureId,
       topupId: topup.id,
-      amountMicroUsd: order.amountMicroUsd.toString(),
-      message: 'PayPal payment captured and wallet credited',
+      status: 'COMPLETED',
+      amount: updatedOrder.amountUsd,
+      amountMicroUsd: updatedOrder.amountMicroUsd.toString(),
+      currency: updatedOrder.currency,
+      message: 'PayPal payment captured successfully and wallet credited',
     });
   } catch (error) {
     next(error);
   }
-});
+}
 
-// POST /api/webhooks/paypal (Webhook with signature deduplication)
+paypalRouter.post('/capture-order', requireAuth, handleCaptureOrder);
+paypalRouter.post('/orders/:orderId/capture', requireAuth, handleCaptureOrder); // Legacy alias
+
+// ==========================================
+// 4. GET /api/paypal/order/:orderId
+// Inspect order state, verify against PayPal, return full payment info
+// ==========================================
+async function handleGetOrder(req: Request, res: Response, next: any) {
+  try {
+    const { orderId } = req.params;
+    const userId = req.user!.userId;
+
+    const order = await prisma.paypalOrder.findUnique({
+      where: { orderId },
+    });
+
+    if (!order) {
+      throw new NotFoundError(`Order ${orderId} not found`);
+    }
+
+    if (order.userId !== userId && !req.user!.isAdmin) {
+      throw new ForbiddenError('You do not have access to view this order');
+    }
+
+    let paypalRemoteStatus = order.status;
+
+    try {
+      const baseUrl = getPayPalBaseUrl();
+      const token = await getPayPalAccessToken();
+      const ppRes = await fetch(`${baseUrl}/v2/checkout/orders/${orderId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (ppRes.ok) {
+        const ppData = (await ppRes.json()) as { status: string };
+        paypalRemoteStatus = ppData.status;
+
+        // Sync approved state if customer approved on PayPal
+        if (ppData.status === 'APPROVED' && order.status === 'CREATED') {
+          await prisma.paypalOrder.update({
+            where: { id: order.id },
+            data: { status: 'APPROVED' },
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('Could not query remote PayPal order status:', err);
+    }
+
+    return sendSuccess(res, {
+      id: order.id,
+      orderId: order.orderId,
+      captureId: order.captureId,
+      amount: order.amountUsd,
+      amountMicroUsd: order.amountMicroUsd.toString(),
+      currency: order.currency,
+      status: order.status,
+      paypalStatus: paypalRemoteStatus,
+      customerId: order.userId,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+paypalRouter.get('/order/:orderId', requireAuth, handleGetOrder);
+paypalRouter.get('/orders/:orderId', requireAuth, handleGetOrder); // Alias
+
+// ==========================================
+// 5. POST /api/paypal/cancel-order
+// Handle cancelled payment states
+// ==========================================
+async function handleCancelOrder(req: Request, res: Response, next: any) {
+  try {
+    const orderId = req.body?.orderId || req.params?.orderId;
+    if (!orderId) {
+      throw new BadRequestError('orderId is required to cancel an order');
+    }
+
+    const userId = req.user!.userId;
+    const order = await prisma.paypalOrder.findUnique({
+      where: { orderId },
+    });
+
+    if (!order) {
+      throw new NotFoundError(`Order ${orderId} not found`);
+    }
+
+    if (order.userId !== userId && !req.user!.isAdmin) {
+      throw new ForbiddenError('You do not have permission to cancel this order');
+    }
+
+    if (order.status === 'COMPLETED') {
+      throw new BadRequestError('Cannot cancel an order that has already been completed');
+    }
+
+    const updated = await prisma.paypalOrder.update({
+      where: { id: order.id },
+      data: { status: 'CANCELLED' },
+    });
+
+    return sendSuccess(res, {
+      orderId: updated.orderId,
+      status: 'CANCELLED',
+      message: 'Payment cancelled successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+paypalRouter.post('/cancel-order', requireAuth, handleCancelOrder);
+paypalRouter.post('/orders/:orderId/cancel', requireAuth, handleCancelOrder); // Alias
+
+// ==========================================
+// 6. POST /api/paypal/webhooks
+// Webhook handler with signature deduplication
+// ==========================================
 export async function handlePaypalWebhook(req: Request, res: Response) {
   const event = req.body as {
     id?: string;
@@ -213,7 +552,7 @@ export async function handlePaypalWebhook(req: Request, res: Response) {
 
   const eventId = event.id || `evt_${Date.now()}`;
 
-  // Invariant 11: Idempotent webhook processing using unique eventId
+  // Idempotent webhook processing using unique eventId
   const existing = await prisma.webhookEvent.findUnique({
     where: { eventId },
   });
@@ -256,7 +595,7 @@ export async function handlePaypalWebhook(req: Request, res: Response) {
     },
   });
 
-  // Handle capture completed event (e.g. async confirmation)
+  // Handle capture completed event asynchronously
   if (event.event_type === 'PAYMENT.CAPTURE.COMPLETED' && event.resource?.custom_id) {
     const walletId = event.resource.custom_id;
     const amountVal = event.resource.amount?.value || '0';
