@@ -199,3 +199,14 @@ authRouter.get('/me', requireAuth, async (req: Request, res: Response, next) => 
     next(error);
   }
 });
+
+// POST /api/auth/seed - Trigger database seeding
+authRouter.post('/seed', async (_req: Request, res: Response, next) => {
+  try {
+    const { execSync } = await import('child_process');
+    execSync('npx tsx prisma/seed.ts', { stdio: 'inherit' });
+    return sendSuccess(res, { message: 'Database seeded successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
