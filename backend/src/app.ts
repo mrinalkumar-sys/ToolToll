@@ -81,6 +81,17 @@ const executionLimiter = rateLimit({
   },
 });
 
+// Root welcome & status endpoint
+app.get('/', (_req: Request, res: Response) => {
+  res.status(200).json({
+    name: 'ToolToll Backend API',
+    status: 'online',
+    version: '1.0.0',
+    docs: '/api/docs',
+    health: '/health',
+  });
+});
+
 // Health check endpoint (PRD 15: Phase 1 exit criteria)
 app.get(['/health', '/api/health'], (_req: Request, res: Response) => {
   res.status(200).json({
