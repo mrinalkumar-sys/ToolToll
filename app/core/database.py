@@ -3,13 +3,19 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from sqlalchemy.orm import declarative_base
 from app.core.config import settings
 
-# Engine configuration
+# Engine configuration - normalize Render PostgreSQL URLs
+db_url = settings.DATABASE_URL
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+elif db_url.startswith("postgresql://") and "+asyncpg" not in db_url:
+    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
 connect_args = {}
-if "sqlite" in settings.DATABASE_URL:
+if "sqlite" in db_url:
     connect_args["check_same_thread"] = False
 
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    db_url,
     echo=False,
     connect_args=connect_args,
     future=True,

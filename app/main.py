@@ -30,10 +30,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS middleware
+# CORS middleware - allows local dev, explicit origins, and any Vercel preview/production deployment
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -49,6 +50,7 @@ app.include_router(admin_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/api/health")
+@app.get("/health")
 async def health_check():
     return {
         "status": "healthy",

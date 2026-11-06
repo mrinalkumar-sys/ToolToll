@@ -9,7 +9,7 @@ async function bootstrap() {
     await prisma.$connect();
     logger.info('Database connection established successfully');
 
-    const server = app.listen(env.PORT, () => {
+    const server = app.listen(env.PORT, '0.0.0.0', () => {
       logger.info(`ToolToll Backend Server running on port ${env.PORT} in ${env.APP_ENV} mode`);
       logger.info(`Health check: http://localhost:${env.PORT}/health`);
       logger.info(`API Docs: http://localhost:${env.PORT}/api/docs`);
