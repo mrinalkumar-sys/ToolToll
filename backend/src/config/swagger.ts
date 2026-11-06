@@ -7,6 +7,10 @@ export const openApiSpec = {
   },
   servers: [
     {
+      url: 'https://tooltoll.onrender.com',
+      description: 'Production Render server',
+    },
+    {
       url: 'http://localhost:4000',
       description: 'Local development server',
     },

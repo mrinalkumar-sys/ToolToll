@@ -1,6 +1,14 @@
 {
   "rewrites": [
     {
+      "source": "/api/:path*",
+      "destination": "https://tooltoll.onrender.com/api/:path*"
+    },
+    {
+      "source": "/health",
+      "destination": "https://tooltoll.onrender.com/health"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

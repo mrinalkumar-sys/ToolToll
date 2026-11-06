@@ -208,7 +208,7 @@ export const Footer: React.FC = () => {
           <div>© 2026 ToolToll Marketplace. Architectural Infrastructure for Autonomous Agents.</div>
           <div style={{ display: 'flex', gap: '20px' }}>
             <a
-              href="http://localhost:4000/api/docs"
+              href="https://tooltoll.onrender.com/api/docs"
               target="_blank"
               rel="noreferrer"
               style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text-dark-secondary)' }}

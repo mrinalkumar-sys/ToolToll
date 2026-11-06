@@ -73,7 +73,7 @@ class Settings(BaseSettings):
 
     # ToolToll Main Backend Gateway & Marketplace Configuration
     BACKEND_BASE_URL: str = Field(
-        default="http://localhost:8000",
+        default="https://tooltoll.onrender.com",
         description="Base URL of the main ToolToll backend service"
     )
     BACKEND_TIMEOUT_SECONDS: float = Field(
@@ -113,6 +113,7 @@ class Settings(BaseSettings):
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://localhost:8000",
+        "https://tooltoll.onrender.com",
         "http://127.0.0.1:8000"
     ]
 

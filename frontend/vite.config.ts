@@ -5,7 +5,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
 
   const backendTarget =
-    env.BACKEND_URL || process.env.BACKEND_URL || 'http://localhost:4000'
+    env.BACKEND_URL || process.env.BACKEND_URL || 'https://tooltoll.onrender.com'
 
   const aiTarget =
     env.AI_SERVICE_URL || process.env.AI_SERVICE_URL || 'http://127.0.0.1:8001'
