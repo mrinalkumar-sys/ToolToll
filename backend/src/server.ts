@@ -9,6 +9,13 @@ async function bootstrap() {
     await prisma.$connect();
     logger.info('Database connection established successfully');
 
+    // Ensure missing schema columns are created if migrations are pending
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE "paypal_orders" ADD COLUMN IF NOT EXISTS "captureId" TEXT;`);
+    } catch (schemaErr) {
+      logger.warn({ schemaErr }, 'Schema column check completed or skipped');
+    }
+
     // Auto-seed initial demo tools and admin user if database is unseeded
     try {
       const toolCount = await prisma.tool.count();
